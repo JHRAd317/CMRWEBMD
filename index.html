@@ -1,279 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>CMR MiniDash Web</title>
-
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f4f4f4;
-        margin: 0;
-        padding: 20px;
-        text-align: center;
-    }
-
-    h1 {
-        margin-bottom: 20px;
-    }
-
-    .grid {
-        display: grid;
-        gap: 10px;
-        margin: 20px auto;
-    }
-
-    .top-grid {
-        grid-template-columns: repeat(4, 1fr);
-        width: 90%;
-        max-width: 600px;
-    }
-
-    .numpad {
-        grid-template-columns: repeat(3, 1fr);
-        width: 70%;
-        max-width: 300px;
-    }
-
-    .custom-grid {
-        grid-template-columns: repeat(6, 1fr);
-        width: 95%;
-        max-width: 700px;
-    }
-
-    button {
-        padding: 15px;
-        font-size: 16px;
-        border: none;
-        background: #0078d4;
-        color: white;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-
-    button:hover {
-        background: #005fa3;
-    }
-
-    /* Top grid buttons: grey with black text */
-    .top-grid button {
-        background: #d9d9d9;
-        color: #000;
-    }
-
-    .top-grid button:hover {
-        background: #bfbfbf;
-    }
-</style>
+    <style>
+        .custom-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* Changed to 2-column layout */
+        }
+    </style>
 </head>
-
 <body>
+    <div class="custom-grid">
+        <button data-macro="C">C</button>
+        <button data-macro="P">P</button>
+        <button data-macro="PSD">PSD</button>
+        <button data-macro="MBill">MBill</button>
+        <button data-macro="SNPT">SNPT</button>
+        <button data-macro="Outlook">Outlook</button>
+        <button data-macro="RFax Web">RFax Web</button>
+        <button data-macro="RFax App">RFax App</button>
+        <button data-macro="Test1">Test1</button>
+        <button data-macro="Test2">Test2</button>
+        <button data-macro="Cor G">Cor G</button>
+        <button data-macro="Cor R">Cor R</button>
+        <button data-macro="PD RQ">PD RQ</button>
+        <button data-macro="PD G">PD G</button>
+        <button data-macro="Inj G">Inj G</button>
+        <button data-macro="Inj Atty C">Inj Atty C</button>
+        <button data-macro="Med_MBill">Med_MBill</button>
+        <button data-macro="MB2Medbill">MB2Medbill</button>
+        <button data-macro="MedBill-A">MedBill-A</button>
+        <button data-macro="MBA2Medbill">MBA2Medbill</button>
+        <button data-macro="SubroMed">SubroMed</button>
+        <button data-macro="SubroGen">SubroGen</button>
+        <button data-macro="SubroDMND">SubroDMND</button>
+        <button data-macro="PSD_PSDA">PSD_PSDA</button>
+    </div>
 
-<h1>CMR MiniDash Web</h1>
-
-<!-- Top 4×3 Button Grid -->
-<div class="grid top-grid">
-    <button onclick="goTo('cpt.html')">CPT</button>
-    <button onclick="goTo('icd.html')">ICD</button>
-    <button onclick="goTo('util.html')">Utility</button>
-    <button onclick="goTo('info.html')">Info</button>
-
-    <button id="copyBtn">Copy</button>
-    <button id="pasteBtn">Paste</button>
-    <button id="snipBtn">Screenshot</button>
-    <button onclick="window.open('https://outlook.office.com')">Outlook</button>
-
-    <button id="rfaxAppBtn">RFax App</button>
-    <button onclick="window.open('https://rfaxweb.example.com')">RFax Web</button>
-    <button id="medbillBtn">Medbill</button>
-    <button id="psdasgnBtn">PSDASGN</button>
-</div>
-
-<!-- Number Pad -->
-<h2>Number Pad</h2>
-<div class="grid numpad" id="numpad">
-    <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
-    <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
-    <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
-
-    <button type="button" data-action="backspace">Backspace</button><button type="button" data-insert="0">0</button><button type="button" data-action="tab">Tab</button>
-    <button type="button" data-action="return">Return</button><button type="button" data-insert=".">.</button><button type="button" data-insert="," class="button">,</button>
-
-    <button type="button" data-action="space">Space</button><button type="button" data-insert="*">*</button><button type="button" disabled aria-hidden="true" style="opacity:0;cursor:default;"></button>
-</div>
-
-<!-- Custom 3×6 Button Grid -->
-<h2>Custom Buttons</h2>
-<div class="grid custom-grid">
-    <button>A</button><button>B</button><button>C</button>
-    <button>D</button><button>E</button><button>F</button>
-    <button>G</button><button>H</button><button>I</button>
-    <button>J</button><button>K</button><button>L</button>
-    <button>M</button><button>N</button><button>O</button>
-    <button>P</button><button>Q</button><button>R</button>
-</div>
-
-<script>
-function goTo(page) {
-    window.location.href = page;
-}
-
-function getActiveEditable() {
-    const el = document.activeElement;
-    if (!el) return null;
-
-    const tag = (el.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea') return el;
-    if (el.isContentEditable) return el;
-    return null;
-}
-
-function dispatchKeyLikeEvents(el, key, code) {
-    // Note: many browsers restrict synthetic key events from triggering default behavior.
-    // We still dispatch them for listeners, then we manually insert text for actual effect.
-    const opts = {
-        key,
-        code,
-        bubbles: true,
-        cancelable: true
-    };
-
-    el.dispatchEvent(new KeyboardEvent('keydown', opts));
-    el.dispatchEvent(new KeyboardEvent('keypress', opts));
-}
-
-function dispatchKeyUp(el, key, code) {
-    const opts = {
-        key,
-        code,
-        bubbles: true,
-        cancelable: true
-    };
-    el.dispatchEvent(new KeyboardEvent('keyup', opts));
-}
-
-function insertTextAtCursor(el, text) {
-    if (!el) return;
-
-    // Inputs/textareas
-    const tag = (el.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea') {
-        const start = el.selectionStart ?? el.value.length;
-        const end = el.selectionEnd ?? el.value.length;
-        const before = el.value.slice(0, start);
-        const after = el.value.slice(end);
-        el.value = before + text + after;
-
-        const newPos = start + text.length;
-        el.setSelectionRange(newPos, newPos);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        return;
-    }
-
-    // contenteditable
-    if (el.isContentEditable) {
-        const sel = window.getSelection();
-        if (!sel) return;
-
-        // Ensure selection is within the element
-        if (sel.rangeCount === 0) {
-            el.focus();
+    <script>
+        function runMacro(payload) {
+            // Logic to run macro with payload
         }
 
-        const range = sel.rangeCount ? sel.getRangeAt(0) : document.createRange();
-        range.deleteContents();
-        range.insertNode(document.createTextNode(text));
-
-        // Move caret to after inserted text
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-}
-
-function backspace(el) {
-    const tag = (el.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea') {
-        const start = el.selectionStart ?? 0;
-        const end = el.selectionEnd ?? 0;
-        if (start !== end) {
-            // delete selection
-            el.value = el.value.slice(0, start) + el.value.slice(end);
-            el.setSelectionRange(start, start);
-        } else if (start > 0) {
-            el.value = el.value.slice(0, start - 1) + el.value.slice(end);
-            el.setSelectionRange(start - 1, start - 1);
-        }
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        return;
-    }
-
-    // contenteditable: execCommand fallback
-    if (el.isContentEditable) {
-        document.execCommand('delete');
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-}
-
-function doTab(el) {
-    // Inserting a tab character is often fine for inputs, but may be undesired.
-    // We'll insert \t.
-    insertTextAtCursor(el, "\t");
-}
-
-function doReturn(el) {
-    const tag = (el.tagName || '').toLowerCase();
-    if (tag === 'input') {
-        // For single-line input, return typically submits; we'll insert newline only for textarea/contenteditable.
-        return;
-    }
-    insertTextAtCursor(el, "\n");
-}
-
-function doSpace(el) {
-    dispatchKeyLikeEvents(el, ' ', 'Space');
-    insertTextAtCursor(el, ' ');
-    dispatchKeyUp(el, ' ', 'Space');
-}
-
-(function wireNumpad() {
-    const numpad = document.getElementById('numpad');
-    if (!numpad) return;
-
-    numpad.addEventListener('click', (e) => {
-        const btn = e.target.closest('button');
-        if (!btn || btn.disabled) return;
-
-        const el = getActiveEditable();
-        if (!el) return;
-
-        const insert = btn.getAttribute('data-insert');
-        const action = btn.getAttribute('data-action');
-
-        if (insert !== null) {
-            insertTextAtCursor(el, insert);
-            return;
+        function focusNext() {
+            // Logic to focus next input/textarea/contenteditable
         }
 
-        switch (action) {
-            case 'backspace':
-                backspace(el);
-                break;
-            case 'tab':
-                doTab(el);
-                break;
-            case 'return':
-                doReturn(el);
-                break;
-            case 'space':
-                doSpace(el);
-                break;
+        function pressEnter() {
+            // Logic to simulate pressing Enter
         }
-    });
-})();
-</script>
 
+        // Add click handler for custom grid buttons
+        document.querySelectorAll('.custom-grid button').forEach(button => {
+            button.addEventListener('click', function() {
+                const macro = this.getAttribute('data-macro');
+                runMacro(macro);
+                // Logic to insert text into focused input/textarea/contenteditable honoring {TAB}, {ENTER}, {SLEEP n} tokens
+            });
+        });
+    </script>
 </body>
 </html>

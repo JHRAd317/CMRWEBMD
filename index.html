@@ -1,62 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <style>
-        .custom-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr); /* Changed to 2-column layout */
-        }
-    </style>
+<meta charset="UTF-8">
+<title>CMR MiniDash Web</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+    }
+
+    h1 {
+        margin-bottom: 20px;
+    }
+
+    .grid {
+        display: grid;
+        gap: 10px;
+        margin: 20px auto;
+    }
+
+    .top-grid {
+        grid-template-columns: repeat(4, 1fr);
+        width: 90%;
+        max-width: 600px;
+    }
+
+    .numpad {
+        grid-template-columns: repeat(3, 1fr);
+        width: 70%;
+        max-width: 300px;
+    }
+
+    .custom-grid {
+        grid-template-columns: repeat(6, 1fr);
+        width: 95%;
+        max-width: 700px;
+    }
+
+    button {
+        padding: 15px;
+        font-size: 16px;
+        border: none;
+        background: #0078d4;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #005fa3;
+    }
+</style>
 </head>
+
 <body>
-    <div class="custom-grid">
-        <button data-macro="C">C</button>
-        <button data-macro="P">P</button>
-        <button data-macro="PSD">PSD</button>
-        <button data-macro="MBill">MBill</button>
-        <button data-macro="SNPT">SNPT</button>
-        <button data-macro="Outlook">Outlook</button>
-        <button data-macro="RFax Web">RFax Web</button>
-        <button data-macro="RFax App">RFax App</button>
-        <button data-macro="Test1">Test1</button>
-        <button data-macro="Test2">Test2</button>
-        <button data-macro="Cor G">Cor G</button>
-        <button data-macro="Cor R">Cor R</button>
-        <button data-macro="PD RQ">PD RQ</button>
-        <button data-macro="PD G">PD G</button>
-        <button data-macro="Inj G">Inj G</button>
-        <button data-macro="Inj Atty C">Inj Atty C</button>
-        <button data-macro="Med_MBill">Med_MBill</button>
-        <button data-macro="MB2Medbill">MB2Medbill</button>
-        <button data-macro="MedBill-A">MedBill-A</button>
-        <button data-macro="MBA2Medbill">MBA2Medbill</button>
-        <button data-macro="SubroMed">SubroMed</button>
-        <button data-macro="SubroGen">SubroGen</button>
-        <button data-macro="SubroDMND">SubroDMND</button>
-        <button data-macro="PSD_PSDA">PSD_PSDA</button>
-    </div>
 
-    <script>
-        function runMacro(payload) {
-            // Logic to run macro with payload
-        }
+<h1>CMR MiniDash Web</h1>
 
-        function focusNext() {
-            // Logic to focus next input/textarea/contenteditable
-        }
+<!-- Top 4×3 Button Grid -->
+<div class="grid top-grid">
+    <button onclick="goTo('cpt.html')">CPT</button>
+    <button onclick="goTo('icd.html')">ICD</button>
+    <button onclick="goTo('utility.html')">Utility</button>
+    <button onclick="goTo('info.html')">Info</button>
 
-        function pressEnter() {
-            // Logic to simulate pressing Enter
-        }
+    <button id="copyBtn">Copy</button>
+    <button id="pasteBtn">Paste</button>
+    <button id="snipBtn">Screenshot</button>
+    <button onclick="window.open('https://outlook.office.com')">Outlook</button>
 
-        // Add click handler for custom grid buttons
-        document.querySelectorAll('.custom-grid button').forEach(button => {
-            button.addEventListener('click', function() {
-                const macro = this.getAttribute('data-macro');
-                runMacro(macro);
-                // Logic to insert text into focused input/textarea/contenteditable honoring {TAB}, {ENTER}, {SLEEP n} tokens
-            });
-        });
-    </script>
+    <button id="rfaxAppBtn">RFax App</button>
+    <button onclick="window.open('https://rfaxweb.example.com')">RFax Web</button>
+    <button id="medbillBtn">Medbill</button>
+    <button id="psdasgnBtn">PSDASGN</button>
+</div>
+
+<!-- Number Pad -->
+<h2>Number Pad</h2>
+<div class="grid numpad">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button>←</button><button>0</button><button>␣</button>
+</div>
+
+<!-- Custom 3×6 Button Grid -->
+<h2>Custom Buttons</h2>
+<div class="grid custom-grid">
+    <button>A</button><button>B</button><button>C</button>
+    <button>D</button><button>E</button><button>F</button>
+    <button>G</button><button>H</button><button>I</button>
+    <button>J</button><button>K</button><button>L</button>
+    <button>M</button><button>N</button><button>O</button>
+    <button>P</button><button>Q</button><button>R</button>
+</div>
+
+<script>
+function goTo(page) {
+    window.location.href = page;
+}
+</script>
+
 </body>
 </html>

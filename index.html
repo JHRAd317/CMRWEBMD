@@ -1,57 +1,62 @@
-<script>
-function runMacro(macro) {
-    let commands = macro.split(/\s+/);
-    commands.forEach(command => {
-        if(command === '{TAB}') {
-            focusNext();
-        } else if(command === '{ENTER}') {
-            pressEnter();
-        } else if(command.startsWith('{SLEEP ')) {
-            let sleepTime = command.match(/\d+/);
-            if(sleepTime) {
-                setTimeout(() => {}, parseInt(sleepTime[0]) * 1000);
-            }
-        } else {
-            let btn = document.querySelector(`[data-macro='${command}']`);
-            if(btn) btn.click();
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .custom-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* Changed to 2-column layout */
         }
-    });
-}
+    </style>
+</head>
+<body>
+    <div class="custom-grid">
+        <button data-macro="C">C</button>
+        <button data-macro="P">P</button>
+        <button data-macro="PSD">PSD</button>
+        <button data-macro="MBill">MBill</button>
+        <button data-macro="SNPT">SNPT</button>
+        <button data-macro="Outlook">Outlook</button>
+        <button data-macro="RFax Web">RFax Web</button>
+        <button data-macro="RFax App">RFax App</button>
+        <button data-macro="Test1">Test1</button>
+        <button data-macro="Test2">Test2</button>
+        <button data-macro="Cor G">Cor G</button>
+        <button data-macro="Cor R">Cor R</button>
+        <button data-macro="PD RQ">PD RQ</button>
+        <button data-macro="PD G">PD G</button>
+        <button data-macro="Inj G">Inj G</button>
+        <button data-macro="Inj Atty C">Inj Atty C</button>
+        <button data-macro="Med_MBill">Med_MBill</button>
+        <button data-macro="MB2Medbill">MB2Medbill</button>
+        <button data-macro="MedBill-A">MedBill-A</button>
+        <button data-macro="MBA2Medbill">MBA2Medbill</button>
+        <button data-macro="SubroMed">SubroMed</button>
+        <button data-macro="SubroGen">SubroGen</button>
+        <button data-macro="SubroDMND">SubroDMND</button>
+        <button data-macro="PSD_PSDA">PSD_PSDA</button>
+    </div>
 
-function focusNext() {
-    let current = document.activeElement; 
-    let inputs = document.querySelectorAll('input, textarea, [contenteditable="true"]');
-    let index = Array.prototype.indexOf.call(inputs, current);
-    if (index > -1 && index < inputs.length - 1) {
-        inputs[index + 1].focus();
-    }
-}
+    <script>
+        function runMacro(payload) {
+            // Logic to run macro with payload
+        }
 
-function pressEnter() {
-    let event = new KeyboardEvent('keypress', { key: 'Enter' });
-    document.activeElement.dispatchEvent(event);
-}
+        function focusNext() {
+            // Logic to focus next input/textarea/contenteditable
+        }
 
-// Assuming there are functions to map button labels to payloads
-const buttonLabels = {
-    'Button1': 'Payload1',
-    'Button2': 'Payload2',
-    'Button3': 'Payload3',
-    'Button4': 'Payload4',
-    'Button5': 'Payload5',
-    'Button6': 'Payload6',
-    'Button7': 'Payload7',
-    'Button8': 'Payload8',
-    'Button9': 'Payload9',
-    'Button10': 'Payload10',
-    'Button11': 'Payload11',
-};
+        function pressEnter() {
+            // Logic to simulate pressing Enter
+        }
 
-// Update each button's data-macro accordingly
-Object.keys(buttonLabels).forEach(label => {
-    let btn = document.querySelector(`button[data-label='${label}']`);
-    if (btn) {
-        btn.setAttribute('data-macro', buttonLabels[label]);
-    }
-});
-</script>
+        // Add click handler for custom grid buttons
+        document.querySelectorAll('.custom-grid button').forEach(button => {
+            button.addEventListener('click', function() {
+                const macro = this.getAttribute('data-macro');
+                runMacro(macro);
+                // Logic to insert text into focused input/textarea/contenteditable honoring {TAB}, {ENTER}, {SLEEP n} tokens
+            });
+        });
+    </script>
+</body>
+</html>

@@ -77,7 +77,20 @@ icd.html
 </div>
 
 <div id="results" class="results"></div>
+    /* A–Z grid: 4 across × 6 down */
+    .alpha-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        width: 90%;
+        max-width: 600px;
+        margin: 20px auto;
+    }
 
+    .alpha-grid button {
+        margin-top: 0;   /* override the global button margin-top */
+        padding: 12px 0;
+    }
 <button onclick="goHome()">Back to Home</button>
 
 <script>

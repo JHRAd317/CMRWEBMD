@@ -91,13 +91,15 @@
 
 <!-- Number Pad -->
 <h2>Number Pad</h2>
-<div class="grid numpad">
-    <button>1</button><button>2</button><button>3</button>
-    <button>4</button><button>5</button><button>6</button>
-    <button>7</button><button>8</button><button>9</button>
+<div class="grid numpad" id="numpad">
+    <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
+    <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
+    <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
 
-    <button>Backspace</button><button>0</button><button>Tab</button>
-    <button>Return</button><button>.</button><button>,</button>
+    <button type="button" data-action="backspace">Backspace</button><button type="button" data-insert="0">0</button><button type="button" data-action="tab">Tab</button>
+    <button type="button" data-action="return">Return</button><button type="button" data-insert=".">.</button><button type="button" data-insert="," class="button">,</button>
+
+    <button type="button" data-action="space">Space</button><button type="button" data-insert="*">*</button><button type="button" disabled aria-hidden="true" style="opacity:0;cursor:default;"></button>
 </div>
 
 <!-- Custom 3×6 Button Grid -->
@@ -115,6 +117,162 @@
 function goTo(page) {
     window.location.href = page;
 }
+
+function getActiveEditable() {
+    const el = document.activeElement;
+    if (!el) return null;
+
+    const tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return el;
+    if (el.isContentEditable) return el;
+    return null;
+}
+
+function dispatchKeyLikeEvents(el, key, code) {
+    // Note: many browsers restrict synthetic key events from triggering default behavior.
+    // We still dispatch them for listeners, then we manually insert text for actual effect.
+    const opts = {
+        key,
+        code,
+        bubbles: true,
+        cancelable: true
+    };
+
+    el.dispatchEvent(new KeyboardEvent('keydown', opts));
+    el.dispatchEvent(new KeyboardEvent('keypress', opts));
+}
+
+function dispatchKeyUp(el, key, code) {
+    const opts = {
+        key,
+        code,
+        bubbles: true,
+        cancelable: true
+    };
+    el.dispatchEvent(new KeyboardEvent('keyup', opts));
+}
+
+function insertTextAtCursor(el, text) {
+    if (!el) return;
+
+    // Inputs/textareas
+    const tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') {
+        const start = el.selectionStart ?? el.value.length;
+        const end = el.selectionEnd ?? el.value.length;
+        const before = el.value.slice(0, start);
+        const after = el.value.slice(end);
+        el.value = before + text + after;
+
+        const newPos = start + text.length;
+        el.setSelectionRange(newPos, newPos);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+    }
+
+    // contenteditable
+    if (el.isContentEditable) {
+        const sel = window.getSelection();
+        if (!sel) return;
+
+        // Ensure selection is within the element
+        if (sel.rangeCount === 0) {
+            el.focus();
+        }
+
+        const range = sel.rangeCount ? sel.getRangeAt(0) : document.createRange();
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+
+        // Move caret to after inserted text
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
+function backspace(el) {
+    const tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') {
+        const start = el.selectionStart ?? 0;
+        const end = el.selectionEnd ?? 0;
+        if (start !== end) {
+            // delete selection
+            el.value = el.value.slice(0, start) + el.value.slice(end);
+            el.setSelectionRange(start, start);
+        } else if (start > 0) {
+            el.value = el.value.slice(0, start - 1) + el.value.slice(end);
+            el.setSelectionRange(start - 1, start - 1);
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+    }
+
+    // contenteditable: execCommand fallback
+    if (el.isContentEditable) {
+        document.execCommand('delete');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
+function doTab(el) {
+    // Inserting a tab character is often fine for inputs, but may be undesired.
+    // We'll insert \t.
+    insertTextAtCursor(el, "\t");
+}
+
+function doReturn(el) {
+    const tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input') {
+        // For single-line input, return typically submits; we'll insert newline only for textarea/contenteditable.
+        return;
+    }
+    insertTextAtCursor(el, "\n");
+}
+
+function doSpace(el) {
+    dispatchKeyLikeEvents(el, ' ', 'Space');
+    insertTextAtCursor(el, ' ');
+    dispatchKeyUp(el, ' ', 'Space');
+}
+
+(function wireNumpad() {
+    const numpad = document.getElementById('numpad');
+    if (!numpad) return;
+
+    numpad.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || btn.disabled) return;
+
+        const el = getActiveEditable();
+        if (!el) return;
+
+        const insert = btn.getAttribute('data-insert');
+        const action = btn.getAttribute('data-action');
+
+        if (insert !== null) {
+            insertTextAtCursor(el, insert);
+            return;
+        }
+
+        switch (action) {
+            case 'backspace':
+                backspace(el);
+                break;
+            case 'tab':
+                doTab(el);
+                break;
+            case 'return':
+                doReturn(el);
+                break;
+            case 'space':
+                doSpace(el);
+                break;
+        }
+    });
+})();
 </script>
 
 </body>

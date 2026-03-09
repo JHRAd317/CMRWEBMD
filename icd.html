@@ -1,127 +1,40 @@
-icd.html
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>ICD Codes – CMR MiniDash Web</title>
-
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f4f4f4;
-        margin: 0;
-        padding: 20px;
-        text-align: center;
-    }
-
-    h1 {
-        margin-bottom: 10px;
-    }
-
-    .search-box {
-        margin: 20px auto;
-        width: 90%;
-        max-width: 400px;
-    }
-
-    input {
-        width: 100%;
-        padding: 12px;
-        font-size: 16px;
-        border-radius: 6px;
-        border: 1px solid #ccc;
-    }
-
-    .results {
-        margin-top: 20px;
-        text-align: left;
-        width: 90%;
-        max-width: 500px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    .result-item {
-        background: white;
-        padding: 12px;
-        border-radius: 6px;
-        margin-bottom: 10px;
-        border: 1px solid #ddd;
-    }
-
-    button {
-        margin-top: 20px;
-        padding: 12px 20px;
-        font-size: 16px;
-        border: none;
-        background: #0078d4;
-        color: white;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-
-    button:hover {
-        background: #005fa3;
-    }
-</style>
-</head>
-
-<body>
-
-<h1>ICD‑10 Codes</h1>
-<p>Search ICD‑10 codes and descriptions</p>
-
-<div class="search-box">
-    <input type="text" id="searchInput" placeholder="Type ICD code or keyword..." onkeyup="searchICD()">
+<!-- Existing content preserved here -->
+<div class="alpha-grid">
+  <button onclick="onAlphaButtonClick('A')">A</button>
+  <button onclick="onAlphaButtonClick('B')">B</button>
+  <button onclick="onAlphaButtonClick('C')">C</button>
+  <button onclick="onAlphaButtonClick('D')">D</button>
+  <button onclick="onAlphaButtonClick('E')">E</button>
+  <button onclick="onAlphaButtonClick('F')">F</button>
+  <button onclick="onAlphaButtonClick('G')">G</button>
+  <button onclick="onAlphaButtonClick('H')">H</button>
+  <button onclick="onAlphaButtonClick('I')">I</button>
+  <button onclick="onAlphaButtonClick('J')">J</button>
+  <button onclick="onAlphaButtonClick('K')">K</button>
+  <button onclick="onAlphaButtonClick('L')">L</button>
+  <button onclick="onAlphaButtonClick('M')">M</button>
+  <button onclick="onAlphaButtonClick('N')">N</button>
+  <button onclick="onAlphaButtonClick('O')">O</button>
+  <button onclick="onAlphaButtonClick('P')">P</button>
+  <button onclick="onAlphaButtonClick('Q')">Q</button>
+  <button onclick="onAlphaButtonClick('R')">R</button>
+  <button onclick="onAlphaButtonClick('S')">S</button>
+  <button onclick="onAlphaButtonClick('T')">T</button>
+  <button onclick="onAlphaButtonClick('U')">U</button>
+  <button onclick="onAlphaButtonClick('V')">V</button>
+  <button onclick="onAlphaButtonClick('W')">W</button>
+  <button onclick="onAlphaButtonClick('X')">X</button>
+  <button onclick="onAlphaButtonClick('Y')">Y</button>
+  <button onclick="onAlphaButtonClick('Z')">Z</button>
 </div>
-
-<div id="results" class="results"></div>
-
-<button onclick="goHome()">Back to Home</button>
-
-<script>
-function goHome() {
-    window.location.href = "index.html";
+<style>
+.alpha-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
 }
-
-// Sample ICD‑10 data (expand anytime)
-const icdData = [
-    { code: "M54.5", desc: "Low back pain" },
-    { code: "M25.561", desc: "Pain in right knee" },
-    { code: "M25.562", desc: "Pain in left knee" },
-    { code: "R51.9", desc: "Headache, unspecified" },
-    { code: "R07.9", desc: "Chest pain, unspecified" },
-    { code: "J06.9", desc: "Upper respiratory infection, unspecified" },
-    { code: "K21.9", desc: "Gastro‑esophageal reflux disease without esophagitis" }
-];
-
-function searchICD() {
-    const input = document.getElementById("searchInput").value.toLowerCase();
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = "";
-
-    if (input.trim() === "") return;
-
-    const results = icdData.filter(item =>
-        item.code.toLowerCase().includes(input) ||
-        item.desc.toLowerCase().includes(input)
-    );
-
-    if (results.length === 0) {
-        resultsDiv.innerHTML = "<p>No results found.</p>";
-        return;
-    }
-
-    results.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "result-item";
-        div.innerHTML = `<strong>${item.code}</strong><br>${item.desc}`;
-        resultsDiv.appendChild(div);
-    });
+.alpha-grid button {
+    padding: 10px;
+    font-size: 16px;
 }
-</script>
-
-</body>
-</html>
-
+</style>

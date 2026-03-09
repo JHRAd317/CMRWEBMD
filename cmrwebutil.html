@@ -1,0 +1,157 @@
+cmrwebutil.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Utility – CMR MiniDash Web</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    .editor-box {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        margin: 20px auto;
+        box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        text-align: left;
+    }
+
+    label {
+        font-weight: bold;
+        display: block;
+        margin-top: 15px;
+    }
+
+    input, select {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin-top: 5px;
+    }
+
+    .preview {
+        margin-top: 20px;
+        padding: 15px;
+        background: #0078d4;
+        color: white;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 18px;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 12px 20px;
+        font-size: 16px;
+        border: none;
+        background: #0078d4;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    button:hover {
+        background: #005fa3;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Utility – Button Editor</h1>
+<p>Edit button names, destinations, and actions</p>
+
+<div class="editor-box">
+
+    <label for="buttonSelect">Select Button to Edit</label>
+    <select id="buttonSelect" onchange="loadButton()">
+        <option value="">-- Choose a Button --</option>
+        <option value="btn1">Top Grid – Button 1</option>
+        <option value="btn2">Top Grid – Button 2</option>
+        <option value="btn3">Top Grid – Button 3</option>
+        <option value="btn4">Top Grid – Button 4</option>
+        <option value="btn5">Copy</option>
+        <option value="btn6">Paste</option>
+        <option value="btn7">Screenshot</option>
+        <option value="btn8">Outlook</option>
+        <option value="btn9">RFax App</option>
+        <option value="btn10">RFax Web</option>
+        <option value="btn11">Medbill</option>
+        <option value="btn12">PSDASGN</option>
+    </select>
+
+    <label for="btnName">Button Name</label>
+    <input type="text" id="btnName" placeholder="Enter button label">
+
+    <label for="btnAction">Action / URL / SendKeys</label>
+    <input type="text" id="btnAction" placeholder="Enter action or link">
+
+    <div class="preview" id="previewBox">Preview</div>
+
+    <button onclick="saveButton()">Save Button</button>
+</div>
+
+<button onclick="goHome()">Back to Home</button>
+
+<script>
+function goHome() {
+    window.location.href = "index.html";
+}
+
+// Load saved button settings
+function loadButton() {
+    const key = document.getElementById("buttonSelect").value;
+    if (!key) return;
+
+    const saved = JSON.parse(localStorage.getItem(key)) || {};
+
+    document.getElementById("btnName").value = saved.name || "";
+    document.getElementById("btnAction").value = saved.action || "";
+
+    updatePreview();
+}
+
+// Update preview when typing
+document.getElementById("btnName").addEventListener("input", updatePreview);
+function updatePreview() {
+    const name = document.getElementById("btnName").value || "Preview";
+    document.getElementById("previewBox").innerText = name;
+}
+
+// Save button settings
+function saveButton() {
+    const key = document.getElementById("buttonSelect").value;
+    if (!key) {
+        alert("Please select a button to edit.");
+        return;
+    }
+
+    const data = {
+        name: document.getElementById("btnName").value,
+        action: document.getElementById("btnAction").value
+    };
+
+    localStorage.setItem(key, JSON.stringify(data));
+    alert("Button saved!");
+}
+</script>
+
+</body>
+</html>

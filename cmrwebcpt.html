@@ -1,0 +1,126 @@
+cmrwebcpt.html
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CPT Codes – CMR MiniDash Web</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    .search-box {
+        margin: 20px auto;
+        width: 90%;
+        max-width: 400px;
+    }
+
+    input {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+
+    .results {
+        margin-top: 20px;
+        text-align: left;
+        width: 90%;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .result-item {
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 12px 20px;
+        font-size: 16px;
+        border: none;
+        background: #0078d4;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #005fa3;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>CPT Codes</h1>
+<p>Search CPT codes and descriptions</p>
+
+<div class="search-box">
+    <input type="text" id="searchInput" placeholder="Type CPT code or keyword..." onkeyup="searchCPT()">
+</div>
+
+<div id="results" class="results"></div>
+
+<button onclick="goHome()">Back to Home</button>
+
+<script>
+function goHome() {
+    window.location.href = "index.html";
+}
+
+// Sample CPT data (you can expand this anytime)
+const cptData = [
+    { code: "99213", desc: "Office/outpatient visit, established patient" },
+    { code: "99214", desc: "Office/outpatient visit, moderate complexity" },
+    { code: "97110", desc: "Therapeutic exercises" },
+    { code: "97112", desc: "Neuromuscular reeducation" },
+    { code: "97140", desc: "Manual therapy techniques" },
+    { code: "97530", desc: "Therapeutic activities" },
+    { code: "97014", desc: "Electrical stimulation (unattended)" }
+];
+
+function searchCPT() {
+    const input = document.getElementById("searchInput").value.toLowerCase();
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    if (input.trim() === "") return;
+
+    const results = cptData.filter(item =>
+        item.code.includes(input) || item.desc.toLowerCase().includes(input)
+    );
+
+    if (results.length === 0) {
+        resultsDiv.innerHTML = "<p>No results found.</p>";
+        return;
+    }
+
+    results.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "result-item";
+        div.innerHTML = `<strong>${item.code}</strong><br>${item.desc}`;
+        resultsDiv.appendChild(div);
+    });
+}
+</script>
+
+</body>
+</html>

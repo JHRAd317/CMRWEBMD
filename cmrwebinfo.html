@@ -1,0 +1,115 @@
+cmrwebinfo.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Info – CMR MiniDash Web</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    .info-box {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        margin: 20px auto;
+        box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        text-align: left;
+    }
+
+    h2 {
+        margin-top: 20px;
+        color: #0078d4;
+    }
+
+    p {
+        line-height: 1.6;
+    }
+
+    ul {
+        margin-left: 20px;
+        line-height: 1.6;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 12px 20px;
+        font-size: 16px;
+        border: none;
+        background: #0078d4;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #005fa3;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Info & About</h1>
+<p>CMR MiniDash Web – System Information & Help</p>
+
+<div class="info-box">
+
+    <h2>About MiniDash Web</h2>
+    <p>
+        CMR MiniDash Web is a browser‑based dashboard designed to replace desktop automation tools 
+        with a clean, mobile‑friendly interface. It provides quick access to CPT/ICD lookups, 
+        customizable buttons, and workflow shortcuts.
+    </p>
+
+    <h2>Features</h2>
+    <ul>
+        <li>4×3 main navigation grid</li>
+        <li>Live CPT and ICD search tools</li>
+        <li>Customizable button editor with local storage</li>
+        <li>Mobile‑friendly layout for iPhone, iPad, and desktop</li>
+        <li>Lightweight, fast, and fully client‑side</li>
+    </ul>
+
+    <h2>Version</h2>
+    <p><strong>MiniDash Web Version 1.0</strong><br>
+       Last updated: March 2026</p>
+
+    <h2>Developer Notes</h2>
+    <p>
+        This project is designed for modular expansion. Additional pages, tools, and 
+        integrations can be added without changing the core layout. The Utility page 
+        supports button customization using browser localStorage.
+    </p>
+
+    <h2>Support</h2>
+    <p>
+        For updates, enhancements, or troubleshooting, return to the Utility page or 
+        contact your system administrator.
+    </p>
+
+</div>
+
+<button onclick="goHome()">Back to Home</button>
+
+<script>
+function goHome() {
+    window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>

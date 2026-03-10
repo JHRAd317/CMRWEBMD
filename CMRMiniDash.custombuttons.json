@@ -1,0 +1,288 @@
+﻿[
+    {
+        "Tab":  "Sandbox",
+        "Name":  "Quote",
+        "Keys":  "s161xxa",
+        "Color":  "#FF00FF"
+    },
+    {
+        "Tab":  "Index",
+        "Name":  "RTS Fax",
+        "Keys":  "ctrl+Shift+Alt+WIN+O",
+        "Color":  "#FF8040",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "NP",
+        "Name":  "AB",
+        "Keys":  "A,B",
+        "Color":  "#FF8000",
+        "Mode":  "sendkeys"
+    },
+    {
+        "Tab":  "NP",
+        "Name":  "ABCD",
+        "Keys":  "A,B,C,D",
+        "Color":  "#80FFFF",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "98941",
+        "Keys":  "98941",
+        "Color":  "#FF8000",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "98943",
+        "Keys":  "98943",
+        "Color":  "#804000",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "97110",
+        "Keys":  "97110",
+        "Color":  "#008000",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "97012",
+        "Keys":  "97012",
+        "Color":  "#8080FF",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "G0283",
+        "Keys":  "G0283",
+        "Color":  "#0000FF",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "97010",
+        "Keys":  "97010",
+        "Color":  "#0080C0",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "TAB",
+        "Keys":  "{TAB}",
+        "Color":  "#808000",
+        "Mode":  "sendkeys"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "ABC",
+        "Keys":  "A,B,C",
+        "Color":  "#00FF80",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "SPACE",
+        "Keys":  "( )",
+        "Color":  "#FF8000",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "97140",
+        "Keys":  "97140",
+        "Color":  "#800000",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M5020",
+        "Keys":  "M5020 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "S13160A",
+        "Keys":  "S13160A",
+        "Color":  "#27AE60",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M5126",
+        "Keys":  "M5126 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M5412",
+        "Keys":  "M5412 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M5450",
+        "Keys":  "M5450 {enter",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M546",
+        "Keys":  "M546 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M9981",
+        "Keys":  "M9981 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "R023",
+        "Keys":  "R023 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "R079",
+        "Keys":  "R079 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "R541",
+        "Keys":  "R541 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "S134XXA",
+        "Keys":  "S134XXA {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "S23130A",
+        "Keys":  "S23130A {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "S233XXA",
+        "Keys":  "S233XXA {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "S335XXA",
+        "Keys":  "S335XXA {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M79672",
+        "Keys":  "M79672 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M79671",
+        "Keys":  "M79671 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25572",
+        "Keys":  "M25572 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25571",
+        "Keys":  "M25571 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25561",
+        "Keys":  "{enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25562",
+        "Keys":  "M25562 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25552",
+        "Keys":  "M25552 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25551",
+        "Keys":  "M25551 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25531",
+        "Keys":  "M25531 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M79601",
+        "Keys":  "M79601 {Enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "V134XXA",
+        "Keys":  "V134XXA {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "ICD",
+        "Name":  "M25511",
+        "Keys":  "M25511 {enter}",
+        "Color":  "#1F618D",
+        "Mode":  "auto"
+    },
+    {
+        "Tab":  "CPT",
+        "Name":  "99203",
+        "Keys":  "99203 {enter}",
+        "Color":  "#27AE60",
+        "Mode":  "auto"
+    }
+]

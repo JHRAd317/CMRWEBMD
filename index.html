@@ -1,28 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CMRWEBMD</title>
-    <style>
-        .top-grid > button:nth-child(-n+8) {
-            background-color: grey;
-            color: black;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>CMR MiniDash Web</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+    }
+
+    h1 {
+        margin-bottom: 20px;
+    }
+
+    .grid {
+        display: grid;
+        gap: 10px;
+        margin: 20px auto;
+    }
+
+    .top-grid {
+        grid-template-columns: repeat(4, 1fr);
+        width: 90%;
+        max-width: 600px;
+    }
+
+    .numpad {
+        grid-template-columns: repeat(3, 1fr);
+        width: 70%;
+        max-width: 300px;
+    }
+
+    .custom-grid {
+        grid-template-columns: repeat(6, 1fr);
+        width: 95%;
+        max-width: 700px;
+    }
+
+    button {
+        padding: 15px;
+        font-size: 16px;
+        border: none;
+        background: #0078d4;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #005fa3;
+    }
+</style>
 </head>
+
 <body>
-    <div class="top-grid">
-        <button>Button 1</button>
-        <button>Button 2</button>
-        <button>Button 3</button>
-        <button>Button 4</button>
-        <button>Button 5</button>
-        <button>Button 6</button>
-        <button>Button 7</button>
-        <button>Button 8</button>
-        <button>Button 9</button>
-        <button>Button 10</button>
-    </div>
+
+<h1>CMR MiniDash Web</h1>
+
+<!-- Top 4×3 Button Grid -->
+<div class="grid top-grid">
+    <button onclick="goTo('cpt.html')">CPT</button>
+    <button onclick="goTo('icd.html')">ICD</button>
+    <button onclick="goTo('utility.html')">Utility</button>
+    <button onclick="goTo('info.html')">Info</button>
+
+    <button id="copyBtn">Copy</button>
+    <button id="pasteBtn">Paste</button>
+    <button id="snipBtn">Screenshot</button>
+    <button onclick="window.open('https://outlook.office.com')">Outlook</button>
+
+    <button id="rfaxAppBtn">RFax App</button>
+    <button onclick="window.open('https://rfaxweb.example.com')">RFax Web</button>
+    <button id="medbillBtn">Medbill</button>
+    <button id="psdasgnBtn">PSDASGN</button>
+</div>
+
+<!-- Number Pad -->
+<h2>Number Pad</h2>
+<div class="grid numpad">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button>←</button><button>0</button><button>␣</button>
+</div>
+
+<!-- Custom 3×6 Button Grid -->
+<h2>Custom Buttons</h2>
+<div class="grid custom-grid">
+    <button>A</button><button>B</button><button>C</button>
+    <button>D</button><button>E</button><button>F</button>
+    <button>G</button><button>H</button><button>I</button>
+    <button>J</button><button>K</button><button>L</button>
+    <button>M</button><button>N</button><button>O</button>
+    <button>P</button><button>Q</button><button>R</button>
+</div>
+
+<script>
+function goTo(page) {
+    window.location.href = page;
+}
+</script>
+
 </body>
 </html>

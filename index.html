@@ -27,15 +27,12 @@
       max-width: 600px;
     }
 
-/* Top row only (4 buttons) grey + black text */
-.top-grid > button:nth-child(-n+4) {
-  background: #d9d9d9;
-  color: #000;
-}
-.top-grid > button:nth-child(-n+4):hover {
-  background: #bfbfbf;
-}
-    .top-grid > button:nth-child(-n+8):hover {
+    /* Top row only (4 buttons) grey + black text */
+    .top-grid > button:nth-child(-n+4) {
+      background: #d9d9d9;
+      color: #000;
+    }
+    .top-grid > button:nth-child(-n+4):hover {
       background: #bfbfbf;
     }
 
@@ -63,71 +60,128 @@
     }
 
     button:hover { background: #005fa3; }
+
+    /* Password gate styling */
+    #login-box, #content {
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+      width: 90%;
+      max-width: 900px;
+      margin: 20px auto;
+    }
+
+    #login-box {
+      max-width: 400px;
+      margin-top: 80px;
+    }
+
+    #content { display: none; }
+
+    #login-box input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    #login-box button {
+      width: 100%;
+      margin-top: 15px;
+    }
   </style>
 </head>
 
 <body>
-  <h1>CMR MiniDash Web</h1>
 
-  <!-- Top 4×3 Button Grid -->
-  <div class="grid top-grid">
-    <button onclick="goTo('cpt.html')">CPT</button>
-    <button onclick="goTo('icd.html')">ICD</button>
-    <button onclick="goTo('util.html')">Utility</button>
-    <button onclick="goTo('info.html')">Info</button>
-
-    <button id="copyBtn" type="button">Copy</button>
-    <button id="pasteBtn" type="button">Paste</button>
-    <button id="snipBtn" type="button">Screenshot</button>
-    <button type="button" onclick="window.open('https://outlook.office.com')">Outlook</button>
-
-    <button id="rfaxAppBtn" type="button">RFax App</button>
-    <button type="button" onclick="window.open('https://rfaxweb.example.com')">RFax Web</button>
-    <button id="medbillBtn" type="button">Medbill</button>
-    <button id="psdasgnBtn" type="button">PSDASGN</button>
+  <!-- Login gate -->
+  <div id="login-box">
+    <h2>Enter Password</h2>
+    <input id="pw" type="password" placeholder="Password">
+    <button type="button" onclick="checkPassword()">Unlock</button>
+    <p id="error" style="color:red; display:none; margin-top:10px;">Incorrect password</p>
   </div>
 
-  <!-- Number Pad -->
-  <h2>Number Pad</h2>
-  <div class="grid numpad" id="numpad">
-    <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
-    <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
-    <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
+  <!-- Protected content -->
+  <div id="content">
+    <h1>CMR MiniDash Web</h1>
 
-    <button type="button" data-action="backspace">Backspace</button>
-    <button type="button" data-insert="0">0</button>
-    <button type="button" data-action="tab">Tab</button>
+    <!-- Top 4×3 Button Grid -->
+    <div class="grid top-grid">
+      <button onclick="goTo('cpt.html')">CPT</button>
+      <button onclick="goTo('icd.html')">ICD</button>
+      <button onclick="goTo('util.html')">Utility</button>
+      <button onclick="goTo('info.html')">Info</button>
 
-    <button type="button" data-action="return">Return</button>
-    <button type="button" data-insert="*">*</button>
-    <button type="button" data-action="space">Space</button>
+      <button id="copyBtn" type="button">Copy</button>
+      <button id="pasteBtn" type="button">Paste</button>
+      <button id="snipBtn" type="button">Screenshot</button>
+      <button type="button" onclick="window.open('https://outlook.office.com')">Outlook</button>
+
+      <button id="rfaxAppBtn" type="button">RFax App</button>
+      <button type="button" onclick="window.open('https://rfaxweb.example.com')">RFax Web</button>
+      <button id="medbillBtn" type="button">Medbill</button>
+      <button id="psdasgnBtn" type="button">PSDASGN</button>
+    </div>
+
+    <!-- Number Pad -->
+    <h2>Number Pad</h2>
+    <div class="grid numpad" id="numpad">
+      <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
+      <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
+      <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
+
+      <button type="button" data-action="backspace">Backspace</button>
+      <button type="button" data-insert="0">0</button>
+      <button type="button" data-action="tab">Tab</button>
+
+      <button type="button" data-action="return">Return</button>
+      <button type="button" data-insert="*">*</button>
+      <button type="button" data-action="space">Space</button>
+    </div>
+
+    <!-- Custom Buttons (all rows, 2 columns) -->
+    <h2>Custom Buttons</h2>
+    <div class="grid custom-grid" id="customGrid">
+      <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Cor G</button>
+      <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">Cor R</button>
+
+      <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">PD RQ</button>
+      <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">PD G</button>
+
+      <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Inj G</button>
+      <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}">Inj Atty C</button>
+
+      <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}{TAB}">Med_MBill</button>
+      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 200}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MB2Medbill</button>
+
+      <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">MedBill-A</button>
+      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 400}M{SLEEP 800}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MBA2Medbill</button>
+
+      <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">SubroMed</button>
+      <button type="button" data-macro="{TAB}S{SLEEP 300}{TAB}M{SLEEP 400}G{SLEEP 800}{TAB}">SubroGen</button>
+
+      <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}">SubroDMND</button>
+      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">PSD_PSDA</button>
+    </div>
   </div>
 
-  <!-- Custom Buttons (all rows, 2 columns) -->
-<h2>Custom Buttons</h2>
-<div class="grid custom-grid" id="customGrid">
-  <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Cor G</button>
-  <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">Cor R</button>
-
-  <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">PD RQ</button>
-  <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">PD G</button>
-
-  <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Inj G</button>
-  <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}">Inj Atty C</button>
-
-  <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}{TAB}">Med_MBill</button>
-  <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 200}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MB2Medbill</button>
-
-  <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">MedBill-A</button>
-  <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 400}M{SLEEP 800}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MBA2Medbill</button>
-
-  <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">SubroMed</button>
-  <button type="button" data-macro="{TAB}S{SLEEP 300}{TAB}M{SLEEP 400}G{SLEEP 800}{TAB}">SubroGen</button>
-
-  <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}">SubroDMND</button>
-  <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">PSD_PSDA</button>
-</div>
   <script>
+    function checkPassword() {
+      const input = document.getElementById("pw").value;
+      const correct = "CMR2026!";
+
+      if (input === correct) {
+        document.getElementById("login-box").style.display = "none";
+        document.getElementById("content").style.display = "block";
+      } else {
+        document.getElementById("error").style.display = "block";
+      }
+    }
+
     function goTo(page) { window.location.href = page; }
 
     function getActiveEditable() {
@@ -234,7 +288,6 @@
           case 'tab': focusNext(); break;
           case 'return': pressEnter(); break;
           case 'space':
-            // simulate spacebar in browser-safe way:
             insertTextAtCursor(el, ' ');
             break;
         }
@@ -242,3 +295,4 @@
     })();
   </script>
 </body>
+</html>

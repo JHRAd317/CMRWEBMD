@@ -168,63 +168,50 @@ function insertTextAtCursor(el, text) {
   }
 }
 
-function pressEnter(el) {
-  if (!el) return;
-
-  el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-  el.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-
-  const tag = (el.tagName || "").toLowerCase();
-  if (tag === "textarea" || el.isContentEditable) {
-    insertTextAtCursor(el, "\n");
-  }
-
-  el.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
-}
-
-function focusNext() {
-  const focusable = Array.from(document.querySelectorAll(
-    'input, textarea, select, button, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
-  )).filter(el => !el.disabled && el.tabIndex !== -1);
-
-  const idx = focusable.indexOf(document.activeElement);
-  const next = focusable[(idx + 1) % focusable.length];
-  if (next) next.focus();
-}
-
-function backspace(el) {
-  const tag = (el.tagName || "").toLowerCase();
-  if (tag !== "input" && tag !== "textarea") return;
-
-  const start = el.selectionStart ?? 0;
-  const end = el.selectionEnd ?? 0;
-
-  if (start !== end) {
-    el.value = el.value.slice(0, start) + el.value.slice(end);
-    el.setSelectionRange(start, start);
-  } else if (start > 0) {
-    el.value = el.value.slice(0, start - 1) + el.value.slice(end);
-    el.setSelectionRange(start - 1, start - 1);
-  }
-  el.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-/* Supports {TAB} and {ENTER}. (You can extend later for {SLEEP n}) */
+/* Supports {TAB}, {ENTER}, {SLEEP n} */
 function runKeysString(keys) {
   const el = getActiveEditable();
   if (!el) return;
 
-  const parts = String(keys).split(/(\{TAB\}|\{ENTER\})/i).filter(Boolean);
+  // Split into tokens we support
+  const parts = String(keys)
+    .split(/(\{TAB\}|\{ENTER\}|\{SLEEP\s+\d+\})/i)
+    .filter(Boolean);
 
-  for (const p of parts) {
-    if (/^\{TAB\}$/i.test(p)) {
-      focusNext();
-    } else if (/^\{ENTER\}$/i.test(p)) {
-      pressEnter(el);
-    } else {
-      insertTextAtCursor(getActiveEditable(), p);
+  // Run sequentially (so SLEEP actually pauses)
+  let i = 0;
+  function step() {
+    if (i >= parts.length) return;
+
+    const p = parts[i++];
+
+    // {SLEEP n}
+    const sleepMatch = p.match(/^\{SLEEP\s+(\d+)\}$/i);
+    if (sleepMatch) {
+      const ms = parseInt(sleepMatch[1], 10) || 0;
+      setTimeout(step, ms);
+      return;
     }
+
+    // For testing in the textarea, insert literal characters
+    if (/^\{TAB\}$/i.test(p)) {
+      insertTextAtCursor(getActiveEditable(), "\t");
+      step();
+      return;
+    }
+
+    if (/^\{ENTER\}$/i.test(p)) {
+      insertTextAtCursor(getActiveEditable(), "\n");
+      step();
+      return;
+    }
+
+    // Plain text
+    insertTextAtCursor(getActiveEditable(), p);
+    step();
   }
+
+  step();
 }
 
 /* ------------ payload log / UI helpers ------------ */
@@ -237,22 +224,10 @@ function recordPayload(label, payload) {
 
 /* ------------ 2) Index payloads (manual) ------------ */
 const indexPayloads = [
-  {
-    label: "Cor G",
-    payload: "{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}"
-  },
-  {
-    label: "Cor R",
-    payload: "{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}"
-  },
-  {
-    label: "PD RQ",
-    payload: "{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}"
-  },
-  {
-    label: "PD G",
-    payload: "{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}"
-  }
+  { label: "Cor G", payload: "{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}" },
+  { label: "Cor R", payload: "{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}" },
+  { label: "PD RQ", payload: "{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}" },
+  { label: "PD G", payload: "{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}" }
 ];
 
 function renderIndexPayloadButtons() {

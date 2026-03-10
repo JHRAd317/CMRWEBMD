@@ -59,7 +59,7 @@
 
   button:hover { background: #005fa3; }
 
-  /* A–Z grid: 4 across × 7 down (last row partial) */
+  /* A–Z grid */
   .alpha-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -87,7 +87,7 @@
   .cpt-buttons button {
     margin-top: 0;
     padding: 12px 10px;
-    color: #000; /* black text usually reads better on bright colors */
+    color: #000;
   }
 
   .hint {
@@ -97,6 +97,20 @@
     font-size: 14px;
     color: #444;
     text-align: left;
+  }
+
+  /* NumPad */
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 70%;
+    max-width: 320px;
+    margin: 20px auto;
+  }
+  .numpad button {
+    margin-top: 0;
+    padding: 12px 10px;
   }
 </style>
 </head>
@@ -117,6 +131,21 @@
 </div>
 <div id="cptButtons" class="cpt-buttons" aria-label="CPT quick buttons"></div>
 
+<h2>Number Pad</h2>
+<div class="numpad" id="numpad" aria-label="Number pad">
+  <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
+  <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
+  <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
+
+  <button type="button" data-action="backspace">Backspace</button>
+  <button type="button" data-insert="0">0</button>
+  <button type="button" data-action="tab">Tab</button>
+
+  <button type="button" data-action="return">Return</button>
+  <button type="button" data-insert="*">*</button>
+  <button type="button" data-action="space">Space</button>
+</div>
+
 <h2>Index</h2>
 <div class="alpha-grid" aria-label="A to Z index">
   <button type="button">A</button><button type="button">B</button><button type="button">C</button><button type="button">D</button>
@@ -135,8 +164,7 @@ function goHome() {
   window.location.href = "index.html";
 }
 
-/* ---------- existing search code ---------- */
-// Sample CPT data (you can expand this anytime)
+// Sample CPT data
 const cptData = [
   { code: "99213", desc: "Office/outpatient visit, established patient" },
   { code: "99214", desc: "Office/outpatient visit, moderate complexity" },
@@ -171,7 +199,7 @@ function searchCPT() {
   });
 }
 
-/* ---------- JSON buttons + insertion helpers ---------- */
+/* Shared editable helpers */
 function getActiveEditable() {
   const el = document.activeElement;
   if (!el) return null;
@@ -210,8 +238,6 @@ function insertTextAtCursor(el, text) {
 }
 
 function pressEnter(el) {
-  // for textarea/contenteditable we can insert newline;
-  // for inputs, just dispatch key events.
   if (!el) return;
 
   el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
@@ -235,11 +261,27 @@ function focusNext() {
   if (next) next.focus();
 }
 
+function backspace(el) {
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag !== "input" && tag !== "textarea") return;
+
+  const start = el.selectionStart ?? 0;
+  const end = el.selectionEnd ?? 0;
+
+  if (start !== end) {
+    el.value = el.value.slice(0, start) + el.value.slice(end);
+    el.setSelectionRange(start, start);
+  } else if (start > 0) {
+    el.value = el.value.slice(0, start - 1) + el.value.slice(end);
+    el.setSelectionRange(start - 1, start - 1);
+  }
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function runKeysString(keys) {
   const el = getActiveEditable();
   if (!el) return;
 
-  // very small parser: supports {TAB} and {ENTER} and plain text
   const parts = String(keys).split(/(\{TAB\}|\{ENTER\})/i).filter(Boolean);
 
   for (const p of parts) {
@@ -253,6 +295,7 @@ function runKeysString(keys) {
   }
 }
 
+/* CPT JSON buttons */
 async function loadCptButtons() {
   const container = document.getElementById("cptButtons");
   container.innerHTML = "";
@@ -277,6 +320,35 @@ async function loadCptButtons() {
     container.appendChild(btn);
   });
 }
+
+/* NumPad wiring */
+(function wireNumpad() {
+  const numpad = document.getElementById("numpad");
+  if (!numpad) return;
+
+  numpad.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn || btn.disabled) return;
+
+    const el = getActiveEditable();
+    if (!el) return;
+
+    const insert = btn.getAttribute("data-insert");
+    const action = btn.getAttribute("data-action");
+
+    if (insert !== null) {
+      insertTextAtCursor(el, insert);
+      return;
+    }
+
+    switch (action) {
+      case "backspace": backspace(el); break;
+      case "tab": focusNext(); break;
+      case "return": pressEnter(el); break;
+      case "space": insertTextAtCursor(el, " "); break;
+    }
+  });
+})();
 
 loadCptButtons();
 </script>

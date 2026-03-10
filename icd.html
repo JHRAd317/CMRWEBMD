@@ -84,6 +84,33 @@
     text-align: left;
   }
 
+  /* Tally Counter */
+  #tallyBox {
+    width: 90%;
+    max-width: 500px;
+    margin: 10px auto 20px auto;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
+  #tallyValue {
+    font-size: 48px;
+    font-weight: bold;
+    line-height: 1;
+  }
+  #tallyBtns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  #tallyBtns button {
+    margin-top: 0;
+    min-width: 110px;
+  }
+
   /* NumPad */
   .numpad {
     display: grid;
@@ -115,6 +142,16 @@
   Click a button to insert its “Keys” into whatever text box you last clicked (input/textarea/contenteditable).
 </div>
 <div id="icdButtons" class="icd-buttons" aria-label="ICD quick buttons"></div>
+
+<h2>Tally Counter</h2>
+<div id="tallyBox">
+  <div id="tallyValue">0</div>
+  <div id="tallyBtns">
+    <button type="button" id="tallyPlus">+1</button>
+    <button type="button" id="tallyMinus">-1</button>
+    <button type="button" id="tallyReset">Reset</button>
+  </div>
+</div>
 
 <h2>Number Pad</h2>
 <div class="numpad" id="numpad" aria-label="Number pad">
@@ -295,6 +332,33 @@ async function loadIcdButtons() {
     container.appendChild(btn);
   });
 }
+
+/* Tally Counter (persists in browser) */
+(function tallyInit() {
+  const KEY = "cmr_icd_tally";
+  const valueEl = document.getElementById("tallyValue");
+  const plusBtn = document.getElementById("tallyPlus");
+  const minusBtn = document.getElementById("tallyMinus");
+  const resetBtn = document.getElementById("tallyReset");
+
+  if (!valueEl || !plusBtn || !minusBtn || !resetBtn) return;
+
+  function getVal() {
+    const n = parseInt(localStorage.getItem(KEY) || "0", 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function setVal(n) {
+    localStorage.setItem(KEY, String(n));
+    valueEl.textContent = String(n);
+  }
+
+  setVal(getVal());
+
+  plusBtn.addEventListener("click", () => setVal(getVal() + 1));
+  minusBtn.addEventListener("click", () => setVal(getVal() - 1));
+  resetBtn.addEventListener("click", () => setVal(0));
+})();
 
 /* NumPad wiring */
 (function wireNumpad() {

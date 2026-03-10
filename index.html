@@ -115,7 +115,8 @@
       <button onclick="goTo('icd.html')">ICD</button>
       <button onclick="goTo('util.html')">Utility</button>
       <button onclick="goTo('info.html')">Info</button>
-<button type="button" onclick="goTo('testpad.html')">Test Pad</button>
+
+      <button type="button" onclick="goTo('testpad.html')">Test Pad</button>
 
       <button id="copyBtn" type="button">Copy</button>
       <button id="pasteBtn" type="button">Paste</button>
@@ -168,20 +169,41 @@
       <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}">SubroDMND</button>
       <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">PSD_PSDA</button>
     </div>
+
+    <!-- Optional: Lock button to force password prompt again -->
+    <div style="margin-top:20px;">
+      <button type="button" onclick="localStorage.removeItem('cmr_unlocked'); location.reload();">
+        Lock
+      </button>
+    </div>
   </div>
 
   <script>
+    const UNLOCK_KEY = "cmr_unlocked";
+
+    function showContent() {
+      document.getElementById("login-box").style.display = "none";
+      document.getElementById("content").style.display = "block";
+    }
+
     function checkPassword() {
       const input = document.getElementById("pw").value;
       const correct = "CMR2026!";
 
       if (input === correct) {
-        document.getElementById("login-box").style.display = "none";
-        document.getElementById("content").style.display = "block";
+        localStorage.setItem(UNLOCK_KEY, "1"); // remember unlock for future "Go Home"
+        showContent();
       } else {
         document.getElementById("error").style.display = "block";
       }
     }
+
+    // If already unlocked once on this device/browser, don't prompt again
+    (function autoUnlock() {
+      if (localStorage.getItem(UNLOCK_KEY) === "1") {
+        showContent();
+      }
+    })();
 
     function goTo(page) { window.location.href = page; }
 

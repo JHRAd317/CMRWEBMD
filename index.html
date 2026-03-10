@@ -27,11 +27,14 @@
       max-width: 600px;
     }
 
-    /* First 2 rows (8 buttons) grey + black text */
-    .top-grid > button:nth-child(-n+8) {
-      background: #d9d9d9;
-      color: #000;
-    }
+/* Top row only (4 buttons) grey + black text */
+.top-grid > button:nth-child(-n+4) {
+  background: #d9d9d9;
+  color: #000;
+}
+.top-grid > button:nth-child(-n+4):hover {
+  background: #bfbfbf;
+}
     .top-grid > button:nth-child(-n+8):hover {
       background: #bfbfbf;
     }

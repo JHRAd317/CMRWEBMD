@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CMR MiniDash – Test Pad</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .wrap {
+      width: 95%;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 15px auto;
+      text-align: left;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 12px 14px;
+      font-size: 16px;
+      border: none;
+      background: #d9d9d9;
+      color: #000;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #bfbfbf; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    code {
+      background: #f2f2f2;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #444;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>Test Pad</h1>
+  <p class="small">
+    Use this page to test payload strings safely in the browser. Click inside the textarea first, then press buttons.
+  </p>
+
+  <div class="card">
+    <h2>1) Test Textarea</h2>
+    <textarea id="testArea" rows="8" placeholder="Click here, then press buttons below..."></textarea>
+
+    <div class="row" style="margin-top:10px;">
+      <button type="button" id="clearBtn">Clear</button>
+      <button type="button" id="copyLogBtn">Copy Payload Log</button>
+      <button type="button" onclick="location.href='index.html'">Back to Home</button>
+    </div>
+
+    <div class="small">
+      Last payload: <code id="lastPayload">(none)</code>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2) Index Payloads (from index.html)</h2>
+    <div class="small">
+      These are the “manual” payloads for buttons like <b>Cor G</b> that live in <code>index.html</code>.
+      If you change them on the home page, update them here too (or later we can load them from JSON instead).
+    </div>
+
+    <div class="grid" id="indexPayloadButtons"></div>
+  </div>
+
+  <div class="card">
+    <h2>3) JSON Payload Buttons</h2>
+
+    <div class="row">
+      <label for="tabSelect"><b>Tab:</b></label>
+      <select id="tabSelect">
+        <option value="CPT">CPT</option>
+        <option value="ICD">ICD</option>
+        <option value="NP">NP</option>
+        <option value="Index">Index</option>
+        <option value="Sandbox">Sandbox</option>
+      </select>
+
+      <button type="button" id="loadJsonBtn">Load Buttons</button>
+    </div>
+
+    <div class="grid" id="jsonButtons"></div>
+  </div>
+</div>
+
+<script>
+/* ------------ shared "editable insert" helpers ------------ */
+function getActiveEditable() {
+  const el = document.activeElement;
+  if (!el) return null;
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea") return el;
+  if (el.isContentEditable) return el;
+  return null;
+}
+
+function insertTextAtCursor(el, text) {
+  if (!el) return;
+  const tag = (el.tagName || "").toLowerCase();
+
+  if (tag === "input" || tag === "textarea") {
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    const pos = start + text.length;
+    el.setSelectionRange(pos, pos);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+
+  if (el.isContentEditable) {
+    const sel = window.getSelection();
+    if (!sel) return;
+    if (sel.rangeCount === 0) el.focus();
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(text));
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+}
+
+function pressEnter(el) {
+  if (!el) return;
+
+  el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+  el.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "textarea" || el.isContentEditable) {
+    insertTextAtCursor(el, "\n");
+  }
+
+  el.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+}
+
+function focusNext() {
+  const focusable = Array.from(document.querySelectorAll(
+    'input, textarea, select, button, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+  )).filter(el => !el.disabled && el.tabIndex !== -1);
+
+  const idx = focusable.indexOf(document.activeElement);
+  const next = focusable[(idx + 1) % focusable.length];
+  if (next) next.focus();
+}
+
+function backspace(el) {
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag !== "input" && tag !== "textarea") return;
+
+  const start = el.selectionStart ?? 0;
+  const end = el.selectionEnd ?? 0;
+
+  if (start !== end) {
+    el.value = el.value.slice(0, start) + el.value.slice(end);
+    el.setSelectionRange(start, start);
+  } else if (start > 0) {
+    el.value = el.value.slice(0, start - 1) + el.value.slice(end);
+    el.setSelectionRange(start - 1, start - 1);
+  }
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/* Supports {TAB} and {ENTER}. (You can extend later for {SLEEP n}) */
+function runKeysString(keys) {
+  const el = getActiveEditable();
+  if (!el) return;
+
+  const parts = String(keys).split(/(\{TAB\}|\{ENTER\})/i).filter(Boolean);
+
+  for (const p of parts) {
+    if (/^\{TAB\}$/i.test(p)) {
+      focusNext();
+    } else if (/^\{ENTER\}$/i.test(p)) {
+      pressEnter(el);
+    } else {
+      insertTextAtCursor(getActiveEditable(), p);
+    }
+  }
+}
+
+/* ------------ payload log / UI helpers ------------ */
+const payloadLog = [];
+function recordPayload(label, payload) {
+  const line = `${new Date().toLocaleString()} | ${label} | ${payload}`;
+  payloadLog.push(line);
+  document.getElementById("lastPayload").textContent = payload || "(empty)";
+}
+
+/* ------------ 2) Index payloads (manual) ------------ */
+const indexPayloads = [
+  {
+    label: "Cor G",
+    payload: "{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}"
+  },
+  {
+    label: "Cor R",
+    payload: "{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}"
+  },
+  {
+    label: "PD RQ",
+    payload: "{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}"
+  },
+  {
+    label: "PD G",
+    payload: "{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}"
+  }
+];
+
+function renderIndexPayloadButtons() {
+  const host = document.getElementById("indexPayloadButtons");
+  host.innerHTML = "";
+
+  indexPayloads.forEach(item => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = item.label;
+    btn.addEventListener("click", () => {
+      recordPayload(item.label, item.payload);
+      runKeysString(item.payload);
+    });
+    host.appendChild(btn);
+  });
+}
+
+/* ------------ 3) JSON buttons ------------ */
+async function loadJsonButtons(tabName) {
+  const host = document.getElementById("jsonButtons");
+  host.innerHTML = "Loading…";
+
+  let data;
+  try {
+    const res = await fetch("CMRMiniDash.custombuttons.json", { cache: "no-store" });
+    data = await res.json();
+  } catch (e) {
+    host.innerHTML = "Could not load CMRMiniDash.custombuttons.json";
+    return;
+  }
+
+  const filtered = data.filter(b => (b.Tab || "").toLowerCase() === String(tabName).toLowerCase());
+
+  host.innerHTML = "";
+  filtered.forEach(b => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = b.Name || "(unnamed)";
+    btn.addEventListener("click", () => {
+      const payload = b.Keys || "";
+      recordPayload(b.Name || "(unnamed)", payload);
+      runKeysString(payload);
+    });
+    host.appendChild(btn);
+  });
+
+  if (filtered.length === 0) {
+    host.innerHTML = "No buttons found for this Tab.";
+  }
+}
+
+/* ------------ wire top controls ------------ */
+document.getElementById("clearBtn").addEventListener("click", () => {
+  document.getElementById("testArea").value = "";
+  document.getElementById("testArea").focus();
+});
+
+document.getElementById("copyLogBtn").addEventListener("click", async () => {
+  const text = payloadLog.join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("Payload log copied to clipboard");
+  } catch (e) {
+    alert("Clipboard blocked by browser settings.");
+  }
+});
+
+document.getElementById("loadJsonBtn").addEventListener("click", () => {
+  const tab = document.getElementById("tabSelect").value;
+  loadJsonButtons(tab);
+});
+
+/* init */
+renderIndexPayloadButtons();
+loadJsonButtons(document.getElementById("tabSelect").value);
+</script>
+</body>
+</html>

@@ -74,6 +74,28 @@
       color: #444;
       margin-top: 6px;
     }
+
+    /* ---- All-payloads viewer ---- */
+    .section-title {
+      margin: 18px 0 8px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .payload {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      background: #f7f7f7;
+      border: 1px solid #e3e3e3;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 8px;
+    }
   </style>
 </head>
 
@@ -103,14 +125,14 @@
     <h2>2) Index Payloads (from index.html)</h2>
     <div class="small">
       These are the “manual” payloads for buttons like <b>Cor G</b> that live in <code>index.html</code>.
-      If you change them on the home page, update them here too (or later we can load them from JSON instead).
+      If you change them on the home page, update them here too (or move them into the JSON).
     </div>
 
     <div class="grid" id="indexPayloadButtons"></div>
   </div>
 
   <div class="card">
-    <h2>3) JSON Payload Buttons</h2>
+    <h2>3) JSON Payload Buttons (Single Tab)</h2>
 
     <div class="row">
       <label for="tabSelect"><b>Tab:</b></label>
@@ -126,6 +148,22 @@
     </div>
 
     <div class="grid" id="jsonButtons"></div>
+  </div>
+
+  <div class="card">
+    <h2>4) All Payloads (Index + ICD + CPT + Utility)</h2>
+
+    <div class="row">
+      <button type="button" id="loadAllBtn">Load Index + ICD + CPT + Utility</button>
+      <button type="button" id="exportAllBtn">Copy ALL payloads</button>
+    </div>
+
+    <div class="small" style="margin-top:10px;">
+      Pulls from <code>CMRMiniDash.custombuttons.json</code> and lists every button payload it finds for those tabs.
+      Note: your Index page “Custom Buttons” (Cor G etc.) are not in the JSON unless you add them there.
+    </div>
+
+    <div id="allButtons"></div>
   </div>
 </div>
 
@@ -173,19 +211,15 @@ function runKeysString(keys) {
   const el = getActiveEditable();
   if (!el) return;
 
-  // Split into tokens we support
   const parts = String(keys)
     .split(/(\{TAB\}|\{ENTER\}|\{SLEEP\s+\d+\})/i)
     .filter(Boolean);
 
-  // Run sequentially (so SLEEP actually pauses)
   let i = 0;
   function step() {
     if (i >= parts.length) return;
-
     const p = parts[i++];
 
-    // {SLEEP n}
     const sleepMatch = p.match(/^\{SLEEP\s+(\d+)\}$/i);
     if (sleepMatch) {
       const ms = parseInt(sleepMatch[1], 10) || 0;
@@ -193,7 +227,6 @@ function runKeysString(keys) {
       return;
     }
 
-    // For testing in the textarea, insert literal characters
     if (/^\{TAB\}$/i.test(p)) {
       insertTextAtCursor(getActiveEditable(), "\t");
       step();
@@ -206,7 +239,6 @@ function runKeysString(keys) {
       return;
     }
 
-    // Plain text
     insertTextAtCursor(getActiveEditable(), p);
     step();
   }
@@ -227,7 +259,17 @@ const indexPayloads = [
   { label: "Cor G", payload: "{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}" },
   { label: "Cor R", payload: "{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}" },
   { label: "PD RQ", payload: "{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}" },
-  { label: "PD G", payload: "{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}" }
+  { label: "PD G", payload: "{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}" },
+  { label: "Inj G", payload: "{TAB}I{SLEEP 600}{TAB}G{SLEEP 300}{TAB}" },
+  { label: "Inj Atty C", payload: "{TAB}I{SLEEP 600}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}" },
+  { label: "Med_MBill", payload: "{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}{TAB}" },
+  { label: "MB2Medbill", payload: "{TAB}M{SLEEP 300}{TAB}M{SLEEP 200}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}" },
+  { label: "MedBill-A", payload: "{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}" },
+  { label: "MBA2Medbill", payload: "{TAB}M{SLEEP 300}{TAB}M{SLEEP 400}M{SLEEP 800}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}" },
+  { label: "SubroMed", payload: "{TAB}S{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}" },
+  { label: "SubroGen", payload: "{TAB}S{SLEEP 300}{TAB}M{SLEEP 400}G{SLEEP 800}{TAB}" },
+  { label: "SubroDMND", payload: "{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}" },
+  { label: "PSD_PSDA", payload: "{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}" }
 ];
 
 function renderIndexPayloadButtons() {
@@ -239,14 +281,14 @@ function renderIndexPayloadButtons() {
     btn.type = "button";
     btn.textContent = item.label;
     btn.addEventListener("click", () => {
-      recordPayload(item.label, item.payload);
+      recordPayload(`[Index HTML] ${item.label}`, item.payload);
       runKeysString(item.payload);
     });
     host.appendChild(btn);
   });
 }
 
-/* ------------ 3) JSON buttons ------------ */
+/* ------------ 3) JSON buttons (single tab) ------------ */
 async function loadJsonButtons(tabName) {
   const host = document.getElementById("jsonButtons");
   host.innerHTML = "Loading…";
@@ -269,7 +311,7 @@ async function loadJsonButtons(tabName) {
     btn.textContent = b.Name || "(unnamed)";
     btn.addEventListener("click", () => {
       const payload = b.Keys || "";
-      recordPayload(b.Name || "(unnamed)", payload);
+      recordPayload(`[JSON ${b.Tab}] ${b.Name || "(unnamed)"}`, payload);
       runKeysString(payload);
     });
     host.appendChild(btn);
@@ -280,7 +322,95 @@ async function loadJsonButtons(tabName) {
   }
 }
 
-/* ------------ wire top controls ------------ */
+/* ------------ 4) ALL payloads (Index/ICD/CPT/Utility) from JSON ------------ */
+let lastAllPayloadExport = "";
+
+function normalizeTabName(tab) {
+  return String(tab || "").trim();
+}
+
+function isWantedTab(tab) {
+  const t = normalizeTabName(tab).toLowerCase();
+  return ["index", "icd", "cpt", "utility", "util"].includes(t);
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+async function loadAllJson() {
+  const host = document.getElementById("allButtons");
+  host.innerHTML = "Loading…";
+
+  let data;
+  try {
+    const res = await fetch("CMRMiniDash.custombuttons.json", { cache: "no-store" });
+    data = await res.json();
+  } catch (e) {
+    host.innerHTML = "Could not load CMRMiniDash.custombuttons.json";
+    return;
+  }
+
+  const wanted = data.filter(b => isWantedTab(b.Tab));
+
+  // group by Tab
+  const groups = new Map();
+  for (const b of wanted) {
+    const tab = normalizeTabName(b.Tab) || "(no tab)";
+    if (!groups.has(tab)) groups.set(tab, []);
+    groups.get(tab).push(b);
+  }
+
+  // order groups
+  const order = ["Index", "ICD", "CPT", "Utility", "Util"];
+  const sortedTabs = Array.from(groups.keys()).sort((a, b) => {
+    const ai = order.indexOf(a);
+    const bi = order.indexOf(b);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi) || a.localeCompare(b);
+  });
+
+  host.innerHTML = "";
+  for (const tab of sortedTabs) {
+    const list = groups.get(tab) || [];
+
+    const title = document.createElement("div");
+    title.className = "section-title";
+    title.textContent = `${tab} (${list.length})`;
+    host.appendChild(title);
+
+    const grid = document.createElement("div");
+    grid.className = "btn-grid";
+
+    list.forEach(b => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = b.Name || "(unnamed)";
+      btn.addEventListener("click", () => {
+        const payload = b.Keys || "";
+        recordPayload(`[JSON ${tab}] ${b.Name || "(unnamed)"}`, payload);
+        runKeysString(payload);
+      });
+      grid.appendChild(btn);
+    });
+
+    host.appendChild(grid);
+
+    const payloadBox = document.createElement("div");
+    payloadBox.className = "payload";
+    payloadBox.innerHTML = escapeHtml(
+      list.map(b => `[${tab}] ${b.Name || "(unnamed)"} => ${b.Keys || ""}`).join("\n")
+    );
+    host.appendChild(payloadBox);
+  }
+
+  lastAllPayloadExport =
+    wanted.map(b => `[${normalizeTabName(b.Tab)}] ${b.Name || "(unnamed)"} => ${b.Keys || ""}`).join("\n");
+}
+
+/* ------------ wire controls ------------ */
 document.getElementById("clearBtn").addEventListener("click", () => {
   document.getElementById("testArea").value = "";
   document.getElementById("testArea").focus();
@@ -301,9 +431,22 @@ document.getElementById("loadJsonBtn").addEventListener("click", () => {
   loadJsonButtons(tab);
 });
 
+document.getElementById("loadAllBtn").addEventListener("click", loadAllJson);
+
+document.getElementById("exportAllBtn").addEventListener("click", async () => {
+  if (!lastAllPayloadExport) await loadAllJson();
+  try {
+    await navigator.clipboard.writeText(lastAllPayloadExport);
+    alert("All payloads copied to clipboard");
+  } catch (e) {
+    alert("Clipboard blocked by browser settings.");
+  }
+});
+
 /* init */
 renderIndexPayloadButtons();
 loadJsonButtons(document.getElementById("tabSelect").value);
+loadAllJson();
 </script>
 </body>
 </html>

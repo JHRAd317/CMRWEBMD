@@ -92,6 +92,17 @@
       width: 100%;
       margin-top: 15px;
     }
+
+    /* Status pill */
+    #status {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: #eee;
+      color: #333;
+    }
   </style>
 </head>
 
@@ -108,6 +119,7 @@
   <!-- Protected content -->
   <div id="content">
     <h1>CMR MiniDash Web</h1>
+    <div id="status" aria-live="polite">Ready</div>
 
     <!-- Top 4×3 Button Grid -->
     <div class="grid top-grid">
@@ -180,6 +192,38 @@
 
   <script>
     const UNLOCK_KEY = "cmr_unlocked";
+    let lastPayload = "";
+
+    function setStatus(msg, isError = false) {
+      const el = document.getElementById('status');
+      if (!el) return;
+      el.textContent = msg;
+      el.style.background = isError ? '#fde7e9' : '#e7f3ff';
+      el.style.color = isError ? '#a80000' : '#003a75';
+    }
+
+    async function copyToClipboard(text, label = 'Copied') {
+      lastPayload = text ?? '';
+      try {
+        await navigator.clipboard.writeText(lastPayload);
+        setStatus(`${label}: ${lastPayload || '(empty)'}`);
+        return true;
+      } catch (e) {
+        setStatus('Clipboard blocked by browser settings. Use HTTPS or localhost + allow clipboard.', true);
+        return false;
+      }
+    }
+
+    async function readFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        setStatus(`Clipboard read: ${text || '(empty)'}`);
+        return text;
+      } catch (e) {
+        setStatus('Clipboard read blocked by browser settings.', true);
+        return '';
+      }
+    }
 
     function showContent() {
       document.getElementById("login-box").style.display = "none";
@@ -217,7 +261,7 @@
     }
 
     function insertTextAtCursor(el, text) {
-      if (!el) return;
+      if (!el) return false;
       const tag = (el.tagName || '').toLowerCase();
 
       if (tag === 'input' || tag === 'textarea') {
@@ -227,12 +271,12 @@
         const pos = start + text.length;
         el.setSelectionRange(pos, pos);
         el.dispatchEvent(new Event('input', { bubbles: true }));
-        return;
+        return true;
       }
 
       if (el.isContentEditable) {
         const sel = window.getSelection();
-        if (!sel) return;
+        if (!sel) return false;
         if (sel.rangeCount === 0) el.focus();
         const range = sel.getRangeAt(0);
         range.deleteContents();
@@ -241,7 +285,10 @@
         sel.removeAllRanges();
         sel.addRange(range);
         el.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
       }
+
+      return false;
     }
 
     function backspace(el) {
@@ -286,7 +333,31 @@
       el.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
     }
 
-    // NUMPAD wiring (includes Space + *)
+    // Wire top-row utility buttons
+    (function wireTopButtons() {
+      const copyBtn = document.getElementById('copyBtn');
+      const pasteBtn = document.getElementById('pasteBtn');
+
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => copyToClipboard(lastPayload, 'Copied last'));
+      }
+
+      if (pasteBtn) {
+        pasteBtn.addEventListener('click', async () => {
+          const txt = await readFromClipboard();
+          if (!txt) return;
+          const el = getActiveEditable();
+          if (el) {
+            insertTextAtCursor(el, txt);
+            setStatus(`Pasted into field: ${txt}`);
+          } else {
+            setStatus('No active field on this page to paste into (expected). Use Ctrl+V in target app/site.', true);
+          }
+        });
+      }
+    })();
+
+    // NUMPAD wiring: always copy digit to clipboard; also type into active field if the active field is on this page
     (function wireNumpad() {
       const numpad = document.getElementById('numpad');
       if (!numpad) return;
@@ -295,27 +366,56 @@
         const btn = e.target.closest('button');
         if (!btn || btn.disabled) return;
 
-        const el = getActiveEditable();
-        if (!el) return;
-
         const insert = btn.getAttribute('data-insert');
         const action = btn.getAttribute('data-action');
 
         if (insert !== null) {
-          insertTextAtCursor(el, insert);
+          // copy single char
+          copyToClipboard(insert, 'Copied');
+
+          // best-effort type into active field (same page only)
+          const el = getActiveEditable();
+          if (el) insertTextAtCursor(el, insert);
           return;
         }
 
+        // Actions: keep existing behavior (same page only) and also copy a symbolic payload
+        const el = getActiveEditable();
         switch (action) {
-          case 'backspace': backspace(el); break;
-          case 'tab': focusNext(); break;
-          case 'return': pressEnter(); break;
+          case 'backspace':
+            if (el) backspace(el);
+            copyToClipboard('{BACKSPACE}', 'Copied');
+            break;
+          case 'tab':
+            focusNext();
+            copyToClipboard('{TAB}', 'Copied');
+            break;
+          case 'return':
+            pressEnter();
+            copyToClipboard('{ENTER}', 'Copied');
+            break;
           case 'space':
-            insertTextAtCursor(el, ' ');
+            if (el) insertTextAtCursor(el, ' ');
+            copyToClipboard(' ', 'Copied');
             break;
         }
       });
     })();
+
+    // Custom grid wiring: copy data-macro payload to clipboard
+    (function wireCustomGrid() {
+      const grid = document.getElementById('customGrid');
+      if (!grid) return;
+
+      grid.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || btn.disabled) return;
+        const macro = btn.getAttribute('data-macro');
+        if (!macro) return;
+        copyToClipboard(macro, 'Copied macro');
+      });
+    })();
+
   </script>
 </body>
 </html>

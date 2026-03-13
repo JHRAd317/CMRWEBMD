@@ -194,7 +194,31 @@
     const UNLOCK_KEY = "cmr_unlocked";
     const CLIP_PREFIX = "CMRWEBMD:";
     let lastPayload = "";
+const LOCAL_AGENT_URL = "http://127.0.0.1:8765/run";
+const LOCAL_AGENT_DELAY_MS = 300;
 
+async function sendToLocalAgent(payload) {
+  try {
+    const res = await fetch(LOCAL_AGENT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: payload
+    });
+    if (!res.ok) throw new Error(`Agent HTTP ${res.status}`);
+    setStatus(`Sent to agent (typing in ~${LOCAL_AGENT_DELAY_MS}ms)`);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function sendOrCopy(payload, labelWhenCopied) {
+  const ok = await sendToLocalAgent(payload);
+  if (!ok) {
+    setStatus("Local agent not reachable; copied to clipboard.", true);
+    await copyToClipboard(payload, labelWhenCopied);
+  }
+}
     function setStatus(msg, isError = false) {
       const el = document.getElementById('status');
       if (!el) return;
@@ -403,7 +427,7 @@
       });
     })();
 
-    // Custom grid wiring: copy data-macro payload to clipboard
+    // Custom grid wiring: await sendOrCopy(macro, 'Copied macro');
     (function wireCustomGrid() {
       const grid = document.getElementById('customGrid');
       if (!grid) return;

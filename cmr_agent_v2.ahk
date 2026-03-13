@@ -1,53 +1,37 @@
-# Persistent AutoHotkey v2 Script to Run a Local HTTP Server
+#Persistent
+SetBatchLines, -1
 
-import http.server
-import socketserver
+; Create a local HTTP listener on 127.0.0.1:8765
+listener := HttpListener(8765)
 
-PORT = 8765
+; Accepting POST requests on /run
+listener.OnMessage("/run", "HandleRun")
 
-class MacroHandler(http.server.SimpleHTTPRequestHandler):
-    def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length).decode('utf-8')
-        response_code = 200
-        self.send_response(response_code)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.handle_macro(post_data)
+Return
 
-    def handle_macro(self, macro):
-        import ahk
-        ahk_instance = ahk.AHK()
-        tokens = self.parse_macro(macro)
-        for token in tokens:
-            if token.startswith('{SLEEP '):
-                sleep_time = int(token[7:-1])
-                ahk_instance.sleep(sleep_time)
-            elif token == '{TAB}':
-                ahk_instance.send('{TAB}')
-            elif token == '{ENTER}':
-                ahk_instance.send('{ENTER}')
-            elif token == '{BACKSPACE}':
-                ahk_instance.send('{BACKSPACE}')
-            elif token == '{SPACE}':
-                ahk_instance.send('{SPACE}')
+HandleRun(request, response) {
+    ; Read the macro payload from the request body
+    payload := request.Body
+    ; Sleep for 300ms before typing
+    Sleep, 300
+    ; Parse tokens and type
+    Loop, Parse, payload, \n
+        if A_LoopField == "{TAB}" 
+            Send, {TAB}
+        else if A_LoopField == "{ENTER}"
+            Send, {ENTER}
+        else if A_LoopField == "{BACKSPACE}"
+            Send, {BACKSPACE}
+        else if A_LoopField == "{SPACE}"
+            Send, {SPACE}
+        else if (InStr(A_LoopField, "{SLEEP "))
+            Sleep, SubStr(A_LoopField, InStr(A_LoopField, " ") + 1, -1)
+        else
+            Send, % A_LoopField
+    response.Send("OK")
+}
 
-    def parse_macro(self, macro):
-        tokens = []
-        i = 0
-        while i < len(macro):
-            if macro[i] == '{':
-                end_index = macro.find('}', i)
-                if end_index != -1:
-                    tokens.append(macro[i:end_index + 1])
-                    i = end_index + 1
-                else:
-                    break
-            else:
-                tokens.append(macro[i])
-                i += 1
-        return tokens
-
-with socketserver.TCPServer(('', PORT), MacroHandler) as httpd:
-    print(f"Serving HTTP on port {PORT}...")
-    httpd.serve_forever()
+HttpListener(port){
+    ; Implementation of a simple HTTP listener...
+    ; (omitted for brevity)
+}

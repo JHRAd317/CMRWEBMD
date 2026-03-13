@@ -1,0 +1,422 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CMR MiniDash Web</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 { margin-bottom: 20px; }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+      margin: 20px auto;
+    }
+
+    .top-grid {
+      grid-template-columns: repeat(4, 1fr);
+      width: 90%;
+      max-width: 600px;
+    }
+
+    /* Top row only (4 buttons) grey + black text */
+    .top-grid > button:nth-child(-n+4) {
+      background: #d9d9d9;
+      color: #000;
+    }
+    .top-grid > button:nth-child(-n+4):hover {
+      background: #bfbfbf;
+    }
+
+    .numpad {
+      grid-template-columns: repeat(3, 1fr);
+      width: 70%;
+      max-width: 300px;
+    }
+
+    /* Custom grid is 2 columns */
+    .custom-grid {
+      grid-template-columns: repeat(2, 1fr);
+      width: 95%;
+      max-width: 700px;
+    }
+
+    button {
+      padding: 15px;
+      font-size: 16px;
+      border: none;
+      background: #0078d4;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover { background: #005fa3; }
+
+    /* Password gate styling */
+    #login-box, #content {
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+      width: 90%;
+      max-width: 900px;
+      margin: 20px auto;
+    }
+
+    #login-box {
+      max-width: 400px;
+      margin-top: 80px;
+    }
+
+    #content { display: none; }
+
+    #login-box input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    #login-box button {
+      width: 100%;
+      margin-top: 15px;
+    }
+
+    /* Status pill */
+    #status {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: #eee;
+      color: #333;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Login gate -->
+  <div id="login-box">
+    <h2>Enter Password</h2>
+    <input id="pw" type="password" placeholder="Password">
+    <button type="button" onclick="checkPassword()">Unlock</button>
+    <p id="error" style="color:red; display:none; margin-top:10px;">Incorrect password</p>
+  </div>
+
+  <!-- Protected content -->
+  <div id="content">
+    <h1>CMR MiniDash Web</h1>
+    <div id="status" aria-live="polite">Ready</div>
+
+    <!-- Top 4×3 Button Grid -->
+    <div class="grid top-grid">
+      <button onclick="goTo('cpt.html')">CPT</button>
+      <button onclick="goTo('icd.html')">ICD</button>
+      <button onclick="goTo('util.html')">Utility</button>
+      <button onclick="goTo('info.html')">Info</button>
+
+      <button type="button" onclick="goTo('testpad.html')">Test Pad</button>
+
+      <button id="copyBtn" type="button">Copy</button>
+      <button id="pasteBtn" type="button">Paste</button>
+      <button id="snipBtn" type="button">Screenshot</button>
+      <button type="button" onclick="window.open('https://outlook.office.com')">Outlook</button>
+
+      <button id="rfaxAppBtn" type="button">RFax App</button>
+      <button type="button" onclick="window.open('https://rfaxweb.example.com')">RFax Web</button>
+      <button id="medbillBtn" type="button">Medbill</button>
+      <button id="psdasgnBtn" type="button">PSDASGN</button>
+    </div>
+
+    <!-- Number Pad -->
+    <h2>Number Pad</h2>
+    <div class="grid numpad" id="numpad">
+      <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
+      <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
+      <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
+
+      <button type="button" data-action="backspace">Backspace</button>
+      <button type="button" data-insert="0">0</button>
+      <button type="button" data-action="tab">Tab</button>
+
+      <button type="button" data-action="return">Return</button>
+      <button type="button" data-insert="*">*</button>
+      <button type="button" data-action="space">Space</button>
+    </div>
+
+    <!-- Custom Buttons (all rows, 2 columns) -->
+    <h2>Custom Buttons</h2>
+    <div class="grid custom-grid" id="customGrid">
+      <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Cor G</button>
+      <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">Cor R</button>
+
+      <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">PD RQ</button>
+      <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">PD G</button>
+
+      <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Inj G</button>
+      <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}">Inj Atty C</button>
+
+      <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}{TAB}">Med_MBill</button>
+      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 200}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MB2Medbill</button>
+
+      <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">MedBill-A</button>
+      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 400}M{SLEEP 800}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MBA2Medbill</button>
+
+      <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">SubroMed</button>
+      <button type="button" data-macro="{TAB}S{SLEEP 300}{TAB}M{SLEEP 400}G{SLEEP 800}{TAB}">SubroGen</button>
+
+      <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}">SubroDMND</button>
+      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">PSD_PSDA</button>
+    </div>
+
+    <!-- Optional: Lock button to force password prompt again -->
+    <div style="margin-top:20px;">
+      <button type="button" onclick="localStorage.removeItem('cmr_unlocked'); location.reload();">
+        Lock
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const UNLOCK_KEY = "cmr_unlocked";
+    const CLIP_PREFIX = "CMRWEBMD:";
+    let lastPayload = "";
+
+    function setStatus(msg, isError = false) {
+      const el = document.getElementById('status');
+      if (!el) return;
+      el.textContent = msg;
+      el.style.background = isError ? '#fde7e9' : '#e7f3ff';
+      el.style.color = isError ? '#a80000' : '#003a75';
+    }
+
+    async function copyToClipboard(text, label = 'Copied') {
+      lastPayload = text ?? '';
+      try {
+        await navigator.clipboard.writeText(`${CLIP_PREFIX}${lastPayload}`);
+        setStatus(`${label}: ${lastPayload || '(empty)'}`);
+        return true;
+      } catch (e) {
+        setStatus('Clipboard blocked by browser settings. Use HTTPS or localhost + allow clipboard.', true);
+        return false;
+      }
+    }
+
+    async function readFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        setStatus(`Clipboard read: ${text || '(empty)'}`);
+        return text;
+      } catch (e) {
+        setStatus('Clipboard read blocked by browser settings.', true);
+        return '';
+      }
+    }
+
+    function showContent() {
+      document.getElementById("login-box").style.display = "none";
+      document.getElementById("content").style.display = "block";
+    }
+
+    function checkPassword() {
+      const input = document.getElementById("pw").value;
+      const correct = "CMR2026!";
+
+      if (input === correct) {
+        localStorage.setItem(UNLOCK_KEY, "1"); // remember unlock for future "Go Home"
+        showContent();
+      } else {
+        document.getElementById("error").style.display = "block";
+      }
+    }
+
+    // If already unlocked once on this device/browser, don't prompt again
+    (function autoUnlock() {
+      if (localStorage.getItem(UNLOCK_KEY) === "1") {
+        showContent();
+      }
+    })();
+
+    function goTo(page) { window.location.href = page; }
+
+    function getActiveEditable() {
+      const el = document.activeElement;
+      if (!el) return null;
+      const tag = (el.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return el;
+      if (el.isContentEditable) return el;
+      return null;
+    }
+
+    function insertTextAtCursor(el, text) {
+      if (!el) return false;
+      const tag = (el.tagName || '').toLowerCase();
+
+      if (tag === 'input' || tag === 'textarea') {
+        const start = el.selectionStart ?? el.value.length;
+        const end = el.selectionEnd ?? el.value.length;
+        el.value = el.value.slice(0, start) + text + el.value.slice(end);
+        const pos = start + text.length;
+        el.setSelectionRange(pos, pos);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      }
+
+      if (el.isContentEditable) {
+        const sel = window.getSelection();
+        if (!sel) return false;
+        if (sel.rangeCount === 0) el.focus();
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      }
+
+      return false;
+    }
+
+    function backspace(el) {
+      const tag = (el.tagName || '').toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea') return;
+
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+
+      if (start !== end) {
+        el.value = el.value.slice(0, start) + el.value.slice(end);
+        el.setSelectionRange(start, start);
+      } else if (start > 0) {
+        el.value = el.value.slice(0, start - 1) + el.value.slice(end);
+        el.setSelectionRange(start - 1, start - 1);
+      }
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function focusNext() {
+      const focusable = Array.from(document.querySelectorAll(
+        'input, textarea, select, button, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+      )).filter(el => !el.disabled && el.tabIndex !== -1);
+
+      const idx = focusable.indexOf(document.activeElement);
+      const next = focusable[(idx + 1) % focusable.length];
+      if (next) next.focus();
+    }
+
+    function pressEnter() {
+      const el = document.activeElement;
+      if (!el) return;
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+      el.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+
+      const tag = (el.tagName || '').toLowerCase();
+      if (tag === 'textarea' || el.isContentEditable) {
+        insertTextAtCursor(el, "\n");
+      }
+
+      el.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+    }
+
+    // Wire top-row utility buttons
+    (function wireTopButtons() {
+      const copyBtn = document.getElementById('copyBtn');
+      const pasteBtn = document.getElementById('pasteBtn');
+
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => copyToClipboard(lastPayload, 'Copied last'));
+      }
+
+      if (pasteBtn) {
+        pasteBtn.addEventListener('click', async () => {
+          const txt = await readFromClipboard();
+          if (!txt) return;
+          const el = getActiveEditable();
+          if (el) {
+            insertTextAtCursor(el, txt);
+            setStatus(`Pasted into field: ${txt}`);
+          } else {
+            setStatus('No active field on this page to paste into (expected). Use Ctrl+V in target app/site.', true);
+          }
+        });
+      }
+    })();
+
+    // NUMPAD wiring: always copy digit to clipboard; also type into active field if the active field is on this page
+    (function wireNumpad() {
+      const numpad = document.getElementById('numpad');
+      if (!numpad) return;
+
+      numpad.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || btn.disabled) return;
+
+        const insert = btn.getAttribute('data-insert');
+        const action = btn.getAttribute('data-action');
+
+        if (insert !== null) {
+          // copy single char
+          copyToClipboard(insert, 'Copied');
+
+          // best-effort type into active field (same page only)
+          const el = getActiveEditable();
+          if (el) insertTextAtCursor(el, insert);
+          return;
+        }
+
+        // Actions: keep existing behavior (same page only) and also copy a symbolic payload
+        const el = getActiveEditable();
+        switch (action) {
+          case 'backspace':
+            if (el) backspace(el);
+            copyToClipboard('{BACKSPACE}', 'Copied');
+            break;
+          case 'tab':
+            focusNext();
+            copyToClipboard('{TAB}', 'Copied');
+            break;
+          case 'return':
+            pressEnter();
+            copyToClipboard('{ENTER}', 'Copied');
+            break;
+          case 'space':
+            if (el) insertTextAtCursor(el, ' ');
+            copyToClipboard(' ', 'Copied');
+            break;
+        }
+      });
+    })();
+
+    // Custom grid wiring: copy data-macro payload to clipboard
+    (function wireCustomGrid() {
+      const grid = document.getElementById('customGrid');
+      if (!grid) return;
+
+      grid.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || btn.disabled) return;
+        const macro = btn.getAttribute('data-macro');
+        if (!macro) return;
+        copyToClipboard(macro, 'Copied macro');
+      });
+    })();
+
+  </script>
+</body>
+</html>

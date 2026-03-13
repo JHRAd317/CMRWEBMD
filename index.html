@@ -387,7 +387,7 @@ async function sendOrCopy(payload, labelWhenCopied) {
       const numpad = document.getElementById('numpad');
       if (!numpad) return;
 
-      numpad.addEventListener('click', (e) => {
+     numpad.addEventListener('click', async (e) => {
         const btn = e.target.closest('button');
         if (!btn || btn.disabled) return;
 
@@ -396,7 +396,7 @@ async function sendOrCopy(payload, labelWhenCopied) {
 
         if (insert !== null) {
           // copy single char
-          copyToClipboard(insert, 'Copied');
+       await sendOrCopy(insert, 'Copied')
 
           // best-effort type into active field (same page only)
           const el = getActiveEditable();
@@ -407,23 +407,22 @@ async function sendOrCopy(payload, labelWhenCopied) {
         // Actions: keep existing behavior (same page only) and also copy a symbolic payload
         const el = getActiveEditable();
         switch (action) {
-          case 'backspace':
-            if (el) backspace(el);
-            copyToClipboard('{BACKSPACE}', 'Copied');
-            break;
-          case 'tab':
-            focusNext();
-            copyToClipboard('{TAB}', 'Copied');
-            break;
-          case 'return':
-            pressEnter();
-            copyToClipboard('{ENTER}', 'Copied');
-            break;
-          case 'space':
-            if (el) insertTextAtCursor(el, ' ');
-            copyToClipboard(' ', 'Copied');
-            break;
-        }
+case 'backspace':
+  if (el) backspace(el);
+  await sendOrCopy('{BACKSPACE}', 'Copied');
+  break;
+case 'tab':
+  focusNext();
+  await sendOrCopy('{TAB}', 'Copied');
+  break;
+case 'return':
+  pressEnter();
+  await sendOrCopy('{ENTER}', 'Copied');
+  break;
+case 'space':
+  if (el) insertTextAtCursor(el, ' ');
+  await sendOrCopy(' ', 'Copied');
+  break;
       });
     })();
 
@@ -432,13 +431,13 @@ async function sendOrCopy(payload, labelWhenCopied) {
       const grid = document.getElementById('customGrid');
       if (!grid) return;
 
-      grid.addEventListener('click', (e) => {
-        const btn = e.target.closest('button');
-        if (!btn || btn.disabled) return;
-        const macro = btn.getAttribute('data-macro');
-        if (!macro) return;
-        copyToClipboard(macro, 'Copied macro');
-      });
+grid.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button');
+  if (!btn || btn.disabled) return;
+  const macro = btn.getAttribute('data-macro');
+  if (!macro) return;
+  await sendOrCopy(macro, 'Copied macro');
+});
     })();
 
   </script>

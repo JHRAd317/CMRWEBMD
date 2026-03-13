@@ -1,37 +1,35 @@
-#Persistent
-SetBatchLines, -1
+#Requires AutoHotkey v2
 
-; Create a local HTTP listener on 127.0.0.1:8765
-listener := HttpListener(8765)
+; Set the listening address and port
+Run, "C:\Path\To\AutoHotkey\autohotkey.exe" "107.0.0.1:8765" ; Replace with actual listening command if needed
 
-; Accepting POST requests on /run
-listener.OnMessage("/run", "HandleRun")
+WS := WebSocket("ws://127.0.0.1:8765")
 
-Return
+; Handling incoming connections
+WS.On("connection", { ; connection handler
+    onMessage(WS)
+})
 
-HandleRun(request, response) {
-    ; Read the macro payload from the request body
-    payload := request.Body
-    ; Sleep for 300ms before typing
-    Sleep, 300
-    ; Parse tokens and type
-    Loop, Parse, payload, \n
-        if A_LoopField == "{TAB}" 
-            Send, {TAB}
-        else if A_LoopField == "{ENTER}"
-            Send, {ENTER}
-        else if A_LoopField == "{BACKSPACE}"
-            Send, {BACKSPACE}
-        else if A_LoopField == "{SPACE}"
-            Send, {SPACE}
-        else if (InStr(A_LoopField, "{SLEEP "))
-            Sleep, SubStr(A_LoopField, InStr(A_LoopField, " ") + 1, -1)
-        else
-            Send, % A_LoopField
-    response.Send("OK")
+; Function to handle incoming messages
+onMessage(ws) {
+    ws.On("message", (msg) => {
+        parsed := JSON.Parse(msg);
+        RunMacro(parsed);
+    });
 }
 
-HttpListener(port){
-    ; Implementation of a simple HTTP listener...
-    ; (omitted for brevity)
+RunMacro(macro) {
+    if (macro.Command == "run") {
+        this.handleCommands(macro.Commands);
+    }
+}
+
+handleCommands(commands) {
+    for each, command in commands {
+        if (command.Type == "SLEEP") {
+            Sleep(command.Value);
+        } else {
+            Send(command.Value);
+        }
+    }
 }

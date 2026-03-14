@@ -394,16 +394,12 @@ async function sendOrCopy(payload, labelWhenCopied) {
     const action = btn.getAttribute('data-action');
 
     if (insert !== null) {
-      // send single char (agent types into Excel/Word/other tab). If agent fails, clipboard.
       await sendOrCopy(insert, 'Copied');
-
-      // optional: also type into an active field on THIS page
       const el = getActiveEditable();
       if (el) insertTextAtCursor(el, insert);
       return;
     }
 
-    // Actions: keep same-page behavior and also send a symbolic payload to the agent
     const el = getActiveEditable();
     switch (action) {
       case 'backspace':
@@ -426,19 +422,18 @@ async function sendOrCopy(payload, labelWhenCopied) {
   });
 })();
 
-    // Custom grid wiring: await sendOrCopy(macro, 'Copied macro');
-    (function wireCustomGrid() {
-      const grid = document.getElementById('customGrid');
-      if (!grid) return;
+(function wireCustomGrid() {
+  const grid = document.getElementById('customGrid');
+  if (!grid) return;
 
-grid.addEventListener('click', async (e) => {
-  const btn = e.target.closest('button');
-  if (!btn || btn.disabled) return;
-  const macro = btn.getAttribute('data-macro');
-  if (!macro) return;
-  await sendOrCopy(macro, 'Copied macro');
-});
-    })();
+  grid.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || btn.disabled) return;
+    const macro = btn.getAttribute('data-macro');
+    if (!macro) return;
+    await sendOrCopy(macro, 'Copied macro');
+  });
+})();
 
   </script>
 </body>

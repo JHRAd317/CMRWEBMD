@@ -116,21 +116,17 @@
 </head>
 
 <body>
-  <nav style="margin-bottom:20px;">
-    <button onclick="goTo('index.html')">Home</button>
-    <button onclick="goTo('cpt.html')">CPT</button>
-    <button onclick="goTo('icd.html')">ICD</button>
-    <button onclick="goTo('util.html')">Utility</button>
-    <button onclick="goTo('info.html')">Info</button>
-    <button onclick="goTo('testpad.html')">Test Pad</button>
-   <a href="index.html"><button>Home</button></a>
-   <a href="cpt.html"><button>CPT</button></a>
-    <a href="icd.html"><button>ICD</button></a>
-    <a href="util.html"><button>Utility</button></a>
-  <a href="info.html"><button>info</button></a>
-   <a href="testpad.html"><button>Test Pad</button></a>
-  </nav>
-  <!-- rest of your normal page content -->
+<nav style="margin-bottom:20px;">
+  <button onclick="goTo('index.html')">Home</button>
+  <button onclick="goTo('cpt.html')">CPT</button>
+  <button onclick="goTo('icd.html')">ICD</button>
+  <button onclick="goTo('util.html')">Utility</button>
+  <button onclick="goTo('info.html')">Info</button>
+  <button onclick="goTo('testpad.html')">Test Pad</button>
+</nav>
+<script>
+function goTo(page) { window.location.href = page; }
+</script>
 <h1>CPT Codes</h1>
 <p>Search CPT codes and descriptions</p>
 

@@ -162,22 +162,16 @@
     <div class="grid custom-grid" id="customGrid">
       <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Cor G</button>
       <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">Cor R</button>
-
       <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">PD RQ</button>
       <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">PD G</button>
-
       <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Inj G</button>
       <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}">Inj Atty C</button>
-
       <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}{TAB}">Med_MBill</button>
       <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 200}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MB2Medbill</button>
-
       <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">MedBill-A</button>
       <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 400}M{SLEEP 800}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MBA2Medbill</button>
-
       <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">SubroMed</button>
       <button type="button" data-macro="{TAB}S{SLEEP 300}{TAB}M{SLEEP 400}G{SLEEP 800}{TAB}">SubroGen</button>
-
       <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}">SubroDMND</button>
       <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">PSD_PSDA</button>
     </div>
@@ -194,31 +188,32 @@
     const UNLOCK_KEY = "cmr_unlocked";
     const CLIP_PREFIX = "CMRWEBMD:";
     let lastPayload = "";
-const LOCAL_AGENT_URL = "http://127.0.0.1:8765/run";
-const LOCAL_AGENT_DELAY_MS = 300;
+    const LOCAL_AGENT_URL = "http://127.0.0.1:8765/run";
+    const LOCAL_AGENT_DELAY_MS = 300;
 
-async function sendToLocalAgent(payload) {
-  try {
-    const res = await fetch(LOCAL_AGENT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: payload
-    });
-    if (!res.ok) throw new Error(`Agent HTTP ${res.status}`);
-    setStatus(`Sent to agent (typing in ~${LOCAL_AGENT_DELAY_MS}ms)`);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
+    async function sendToLocalAgent(payload) {
+      try {
+        const res = await fetch(LOCAL_AGENT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: payload
+        });
+        if (!res.ok) throw new Error(`Agent HTTP ${res.status}`);
+        setStatus(`Sent to agent (typing in ~${LOCAL_AGENT_DELAY_MS}ms)`);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
 
-async function sendOrCopy(payload, labelWhenCopied) {
-  const ok = await sendToLocalAgent(payload);
-  if (!ok) {
-    setStatus("Local agent not reachable; copied to clipboard.", true);
-    await copyToClipboard(payload, labelWhenCopied);
-  }
-}
+    async function sendOrCopy(payload, labelWhenCopied) {
+      const ok = await sendToLocalAgent(payload);
+      if (!ok) {
+        setStatus("Local agent not reachable; copied to clipboard.", true);
+        await copyToClipboard(payload, labelWhenCopied);
+      }
+    }
+
     function setStatus(msg, isError = false) {
       const el = document.getElementById('status');
       if (!el) return;
@@ -381,59 +376,61 @@ async function sendOrCopy(payload, labelWhenCopied) {
         });
       }
     })();
-// NUMPAD wiring: send to local agent; fallback to clipboard; also type into active field if it's on this page
-(function wireNumpad() {
-  const numpad = document.getElementById('numpad');
-  if (!numpad) return;
 
-  numpad.addEventListener('click', async (e) => {
-    const btn = e.target.closest('button');
-    if (!btn || btn.disabled) return;
+    // NUMPAD wiring: use local agent/clipboard; async!
+    (function wireNumpad() {
+      const numpad = document.getElementById('numpad');
+      if (!numpad) return;
 
-    const insert = btn.getAttribute('data-insert');
-    const action = btn.getAttribute('data-action');
+      numpad.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || btn.disabled) return;
 
-    if (insert !== null) {
-      await sendOrCopy(insert, 'Copied');
-      const el = getActiveEditable();
-      if (el) insertTextAtCursor(el, insert);
-      return;
-    }
+        const insert = btn.getAttribute('data-insert');
+        const action = btn.getAttribute('data-action');
 
-    const el = getActiveEditable();
-    switch (action) {
-      case 'backspace':
-        if (el) backspace(el);
-        await sendOrCopy('{BACKSPACE}', 'Copied');
-        break;
-      case 'tab':
-        focusNext();
-        await sendOrCopy('{TAB}', 'Copied');
-        break;
-      case 'return':
-        pressEnter();
-        await sendOrCopy('{ENTER}', 'Copied');
-        break;
-      case 'space':
-        if (el) insertTextAtCursor(el, ' ');
-        await sendOrCopy(' ', 'Copied');
-        break;
-    }
-  });
-})();
+        if (insert !== null) {
+          await sendOrCopy(insert, 'Copied');
+          const el = getActiveEditable();
+          if (el) insertTextAtCursor(el, insert);
+          return;
+        }
 
-(function wireCustomGrid() {
-  const grid = document.getElementById('customGrid');
-  if (!grid) return;
+        const el = getActiveEditable();
+        switch (action) {
+          case 'backspace':
+            if (el) backspace(el);
+            await sendOrCopy('{BACKSPACE}', 'Copied');
+            break;
+          case 'tab':
+            focusNext();
+            await sendOrCopy('{TAB}', 'Copied');
+            break;
+          case 'return':
+            pressEnter();
+            await sendOrCopy('{ENTER}', 'Copied');
+            break;
+          case 'space':
+            if (el) insertTextAtCursor(el, ' ');
+            await sendOrCopy(' ', 'Copied');
+            break;
+        }
+      });
+    })();
 
-  grid.addEventListener('click', async (e) => {
-    const btn = e.target.closest('button');
-    if (!btn || btn.disabled) return;
-    const macro = btn.getAttribute('data-macro');
-    if (!macro) return;
-    await sendOrCopy(macro, 'Copied macro');
-  });
-})();
+    // Custom grid wiring: use local agent/clipboard; async!
+    (function wireCustomGrid() {
+      const grid = document.getElementById('customGrid');
+      if (!grid) return;
+
+      grid.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || btn.disabled) return;
+        const macro = btn.getAttribute('data-macro');
+        if (!macro) return;
+        await sendOrCopy(macro, 'Copied macro');
+      });
+    })();
 
   </script>
 </body>

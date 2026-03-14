@@ -381,50 +381,50 @@ async function sendOrCopy(payload, labelWhenCopied) {
         });
       }
     })();
+// NUMPAD wiring: send to local agent; fallback to clipboard; also type into active field if it's on this page
+(function wireNumpad() {
+  const numpad = document.getElementById('numpad');
+  if (!numpad) return;
 
-    // NUMPAD wiring: always copy digit to clipboard; also type into active field if the active field is on this page
-    (function wireNumpad() {
-      const numpad = document.getElementById('numpad');
-      if (!numpad) return;
+  numpad.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || btn.disabled) return;
 
-     numpad.addEventListener('click', async (e) => {
-        const btn = e.target.closest('button');
-        if (!btn || btn.disabled) return;
+    const insert = btn.getAttribute('data-insert');
+    const action = btn.getAttribute('data-action');
 
-        const insert = btn.getAttribute('data-insert');
-        const action = btn.getAttribute('data-action');
+    if (insert !== null) {
+      // send single char (agent types into Excel/Word/other tab). If agent fails, clipboard.
+      await sendOrCopy(insert, 'Copied');
 
-        if (insert !== null) {
-          // copy single char
-       await sendOrCopy(insert, 'Copied')
+      // optional: also type into an active field on THIS page
+      const el = getActiveEditable();
+      if (el) insertTextAtCursor(el, insert);
+      return;
+    }
 
-          // best-effort type into active field (same page only)
-          const el = getActiveEditable();
-          if (el) insertTextAtCursor(el, insert);
-          return;
-        }
-
-        // Actions: keep existing behavior (same page only) and also copy a symbolic payload
-        const el = getActiveEditable();
-        switch (action) {
-case 'backspace':
-  if (el) backspace(el);
-  await sendOrCopy('{BACKSPACE}', 'Copied');
-  break;
-case 'tab':
-  focusNext();
-  await sendOrCopy('{TAB}', 'Copied');
-  break;
-case 'return':
-  pressEnter();
-  await sendOrCopy('{ENTER}', 'Copied');
-  break;
-case 'space':
-  if (el) insertTextAtCursor(el, ' ');
-  await sendOrCopy(' ', 'Copied');
-  break;
-      });
-    })();
+    // Actions: keep same-page behavior and also send a symbolic payload to the agent
+    const el = getActiveEditable();
+    switch (action) {
+      case 'backspace':
+        if (el) backspace(el);
+        await sendOrCopy('{BACKSPACE}', 'Copied');
+        break;
+      case 'tab':
+        focusNext();
+        await sendOrCopy('{TAB}', 'Copied');
+        break;
+      case 'return':
+        pressEnter();
+        await sendOrCopy('{ENTER}', 'Copied');
+        break;
+      case 'space':
+        if (el) insertTextAtCursor(el, ' ');
+        await sendOrCopy(' ', 'Copied');
+        break;
+    }
+  });
+})();
 
     // Custom grid wiring: await sendOrCopy(macro, 'Copied macro');
     (function wireCustomGrid() {

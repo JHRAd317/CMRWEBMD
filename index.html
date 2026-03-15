@@ -77,6 +77,55 @@
       <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">PSD_PSDA</button>
     </div>
     <div style="margin-top:20px;">
+     <!-- ...existing HTML (up to just after </div> for custom buttons)... -->
+    </div>
+
+    <!-- Local Agent Controls -->
+    <h2>Automation Agent</h2>
+    <button id="installAgentBtn" type="button">Install Automation Agent</button>
+    <button id="checkAgentBtn" type="button">Verify Agent</button>
+
+    <div style="margin-top:20px;">
+      <button type="button" onclick="localStorage.removeItem('cmr_unlocked'); location.reload();">Lock</button>
+    </div>
+  </div>
+  <script>
+    // ...all your previous JS (setStatus, sendToLocalAgent, etc)
+
+    // Local Agent controls (Installer and Verifier)
+    (function wireAgentInstaller() {
+      const installBtn = document.getElementById("installAgentBtn");
+      const checkBtn = document.getElementById("checkAgentBtn");
+      if (!installBtn || !checkBtn) return;
+
+      installBtn.addEventListener("click", () => {
+        window.location.href = "Start-CMRAgent.cmd";
+        setStatus("Installer downloaded. Double‑click it to activate the automation agent.");
+      });
+
+      checkBtn.addEventListener("click", async () => {
+        try {
+          const res = await fetch("http://127.0.0.1:8765/run", {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: "{TAB}",
+          });
+
+          if (res.ok) {
+            setStatus("Agent is running and responding.");
+          } else {
+            setStatus("Agent responded with an error.", true);
+          }
+        } catch (e) {
+          setStatus("Agent is NOT running. Please run Start‑CMRAgent.cmd.", true);
+        }
+      });
+    })();
+
+    // ...rest of your JS (already present in <script>)
+  </script>
+</body>
+</html> 
       <button type="button" onclick="localStorage.removeItem('cmr_unlocked'); location.reload();">Lock</button>
     </div>
   </div>

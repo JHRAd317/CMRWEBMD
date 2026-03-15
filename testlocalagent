@@ -1,0 +1,24 @@
+<button id="installAgentBtn" type="button">Install Automation Agent</button>
+<button id="checkAgentBtn" type="button">Verify Agent</button>
+document.getElementById("installAgentBtn").addEventListener("click", () => {
+  window.location.href = "Start-CMRAgent.cmd"; 
+  setStatus("Installer downloaded. Double‑click it to activate the automation agent.");
+});
+
+document.getElementById("checkAgentBtn").addEventListener("click", async () => {
+  try {
+    const res = await fetch("http://127.0.0.1:8765/run", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: "{TAB}"
+    });
+
+    if (res.ok) {
+      setStatus("Agent is running and responding.");
+    } else {
+      setStatus("Agent responded with an error.", true);
+    }
+  } catch (e) {
+    setStatus("Agent is NOT running. Please run Start‑CMRAgent.cmd.", true);
+  }
+});

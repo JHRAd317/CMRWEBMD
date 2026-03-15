@@ -32,6 +32,10 @@
   <div id="content">
     <h1>CMR MiniDash Web</h1>
     <div id="status" aria-live="polite">Ready</div>
+    // Place this just below <div id="status" ...>
+<div id="agent-notice" style="margin:1em 0;color:#555;background:#fdffe0;padding:8px 16px;border-radius:8px;max-width:600px;display:inline-block;">
+  <b>Tip:</b> For instant automation, <b>Install Agent</b> & run it. If not, you'll be prompted to copy and paste manually.
+</div>
     <div class="grid top-grid">
       <button onclick="goTo('cpt.html')">CPT</button>
       <button onclick="goTo('icd.html')">ICD</button>
@@ -151,31 +155,35 @@
         return false;
       }
     }
-    async function sendOrCopy(payload, labelWhenCopied) {
-      const ok = await sendToLocalAgent(payload);
-      if (!ok) {
-        setStatus("Local agent not reachable; copied to clipboard.", true);
-        await copyToClipboard(payload, labelWhenCopied);
-      }
+async function sendOrCopy(payload, labelWhenCopied) {
+  const ok = await sendToLocalAgent(payload);
+  if (!ok) {
+    // Try clipboard, then fallback to manual copy
+    const copied = await copyToClipboard(payload, labelWhenCopied);
+    if (!copied) {
+      setStatus(
+        "Agent is not running and clipboard copying is blocked. Please right-click the desired macro or result and select 'Copy', then paste it manually.",
+        true
+      );
     }
-    function setStatus(msg, isError = false) {
-      const el = document.getElementById('status');
-      if (!el) return;
-      el.textContent = msg;
-      el.style.background = isError ? '#fde7e9' : '#e7f3ff';
-      el.style.color = isError ? '#a80000' : '#003a75';
-    }
-    async function copyToClipboard(text, label = 'Copied') {
-      lastPayload = text ?? '';
-      try {
-        await navigator.clipboard.writeText(`${CLIP_PREFIX}${lastPayload}`);
-        setStatus(`${label}: ${lastPayload || '(empty)'}`);
-        return true;
-      } catch (e) {
-        setStatus('Clipboard blocked by browser settings. Use HTTPS or localhost + allow clipboard.', true);
-        return false;
-      }
-    }
+  }
+}
+async function copyToClipboard(text, label = 'Copied') {
+  lastPayload = text ?? '';
+  try {
+    await navigator.clipboard.writeText(`${CLIP_PREFIX}${lastPayload}`);
+    setStatus(`${label}: ${lastPayload || '(empty)'}`);
+    return true;
+  } catch (e) {
+    // Clipboard failed: chrome block, privacy, browser, etc.
+    // Allow user to manually select/copy payload if desired
+    setStatus(
+      'Clipboard blocked by browser settings. Please use HTTPS and allow clipboard, or right-click this page/macro and copy manually.',
+      true
+    );
+    return false;
+  }
+}
     async function readFromClipboard() {
       try {
         const text = await navigator.clipboard.readText();

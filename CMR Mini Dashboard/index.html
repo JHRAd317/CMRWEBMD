@@ -8,14 +8,57 @@
         .custom-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            max-width: 1200px; /* Adjust this if necessary */
+            max-width: 1200px;
             gap: 10px;
         }
+        .agent-buttons { margin-top: 2em; }
+        .agent-buttons button { margin-right: 1em; margin-bottom: 1em; }
+        .test-section { grid-column: span 4; margin: 2em 0 0 0; background: #fafaff; border-radius: 8px; border: 1px solid #e1e4e8; padding: 1.5em; }
+        .test-section h3 { margin-top:0; }
     </style>
 </head>
 <body>
     <div class="custom-grid">
-        <!-- Buttons go here -->
+        <!-- Other dashboard buttons/tools would go here -->
+
+        <div class="test-section">
+            <h3>Smart Agent Bootstrap TEST</h3>
+            <div class="agent-buttons">
+                <button onclick="downloadScript('Structure.txt','Structure.txt')">Download 1 — Structure</button>
+                <button onclick="downloadScript('Listener.txt','Listener.txt')">Download 2 — Listener</button>
+                <button onclick="downloadScript('activate.txt','activate.ps1')">Download 3 — Installer</button>
+            </div>
+            <ol>
+                <li>Click each button to download <code>Structure.txt</code>, <code>Listener.txt</code>, and <code>activate.ps1</code>.</li>
+                <li>Run <b>activate.ps1</b> in PowerShell (right-click, "Run with PowerShell" or execute manually).</li>
+                <li>The installer will create the structure, set up your listener, and start a local agent server (on port 5123).</li>
+                <li>In your browser, visit <a href="http://localhost:5123/" target="_blank">http://localhost:5123/</a> - you should see "Agent is alive!" if the server is running.</li>
+            </ol>
+            <div style="color:#555; font-size:0.9em;">
+                <strong>Note:</strong> Make sure <code>Structure.txt</code>, <code>Listener.txt</code>, and <code>activate.txt</code> are hosted alongside this dashboard file on your web server for this test to function.<br>
+                The Python agent requires Python to be installed and available in the system PATH.
+            </div>
+        </div>
     </div>
+    <script>
+    async function downloadScript(source, targetName) {
+        try {
+            const response = await fetch(source);
+            if (!response.ok) {
+                alert("File not found: " + source);
+                return;
+            }
+            const text = await response.text();
+            const blob = new Blob([text], { type: "text/plain" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = targetName;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+        } catch(e) {
+            alert("Download failed: " + e);
+        }
+    }
+    </script>
 </body>
 </html>

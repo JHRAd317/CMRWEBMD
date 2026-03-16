@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ICD Codes – CMR MiniDash Web</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+  }
+
+  h1 { margin-bottom: 10px; }
+
+  .search-box {
+    margin: 20px auto;
+    width: 90%;
+    max-width: 400px;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+
+  .results {
+    margin-top: 20px;
+    text-align: left;
+    width: 90%;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .result-item {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+  }
+
+  button {
+    margin-top: 20px;
+    padding: 12px 20px;
+    font-size: 16px;
+    border: none;
+    background: #0078d4;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  button:hover { background: #005fa3; }
+
+  /* JSON-driven ICD buttons */
+  .icd-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 90%;
+    max-width: 700px;
+    margin: 20px auto;
+  }
+
+  .icd-buttons button {
+    margin-top: 0;
+    padding: 12px 10px;
+    color: #000;
+  }
+
+  .hint {
+    width: 90%;
+    max-width: 700px;
+    margin: 0 auto;
+    font-size: 14px;
+    color: #444;
+    text-align: left;
+  }
+
+  /* Tally Counter */
+  #tallyBox {
+    width: 90%;
+    max-width: 500px;
+    margin: 10px auto 20px auto;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
+  #tallyValue {
+    font-size: 48px;
+    font-weight: bold;
+    line-height: 1;
+  }
+  #tallyBtns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  #tallyBtns button {
+    margin-top: 0;
+    min-width: 110px;
+  }
+
+  /* NumPad */
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 70%;
+    max-width: 320px;
+    margin: 20px auto;
+  }
+  .numpad button {
+    margin-top: 0;
+    padding: 12px 10px;
+  }
+</style>
+</head>
+
+<body>
+  <nav style="margin-bottom:20px;">
+  <button onclick="goTo('index.html')">Home</button>
+  <button onclick="goTo('cpt.html')">CPT</button>
+  <button onclick="goTo('icd.html')">ICD</button>
+  <button onclick="goTo('util.html')">Utility</button>
+  <button onclick="goTo('info.html')">Info</button>
+  <button onclick="goTo('testpad.html')">Test Pad</button>
+</nav>
+<script>
+function goTo(page) { window.location.href = page; }
+</script>
+  <!-- rest of your normal page content -->
+<h1>ICD‑10 Codes</h1>
+<p>Search ICD‑10 codes and descriptions</p>
+
+<div class="search-box">
+  <input type="text" id="searchInput" placeholder="Type ICD code or keyword..." onkeyup="searchICD()">
+</div>
+
+<div id="results" class="results"></div>
+
+<h2>ICD Quick Buttons</h2>
+<div class="hint">
+  Click a button to insert its “Keys” into whatever text box you last clicked (input/textarea/contenteditable).
+</div>
+<div id="icdButtons" class="icd-buttons" aria-label="ICD quick buttons"></div>
+
+<h2>Tally Counter</h2>
+<div id="tallyBox">
+  <div id="tallyValue">0</div>
+  <div id="tallyBtns">
+    <button type="button" id="tallyPlus">+1</button>
+    <button type="button" id="tallyMinus">-1</button>
+    <button type="button" id="tallyReset">Reset</button>
+  </div>
+</div>
+
+<h2>Number Pad</h2>
+<div class="numpad" id="numpad" aria-label="Number pad">
+  <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
+  <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
+  <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
+
+  <button type="button" data-action="backspace">Backspace</button>
+  <button type="button" data-insert="0">0</button>
+  <button type="button" data-action="tab">Tab</button>
+
+  <button type="button" data-action="return">Return</button>
+  <button type="button" data-insert="*">*</button>
+  <button type="button" data-action="space">Space</button>
+</div>
+
+<button type="button" onclick="goHome()">Back to Home</button>
+
+<script>
+function goHome() {
+  window.location.href = "index.html";
+}
+
+// Sample ICD‑10 data (expand anytime)
+const icdData = [
+  { code: "M54.5", desc: "Low back pain" },
+  { code: "M25.561", desc: "Pain in right knee" },
+  { code: "M25.562", desc: "Pain in left knee" },
+  { code: "R51.9", desc: "Headache, unspecified" },
+  { code: "R07.9", desc: "Chest pain, unspecified" },
+  { code: "J06.9", desc: "Upper respiratory infection, unspecified" },
+  { code: "K21.9", desc: "Gastro‑esophageal reflux disease without esophagitis" }
+];
+
+function searchICD() {
+  const input = document.getElementById("searchInput").value.toLowerCase();
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
+
+  if (input.trim() === "") return;
+
+  const results = icdData.filter(item =>
+    item.code.toLowerCase().includes(input) ||
+    item.desc.toLowerCase().includes(input)
+  );
+
+  if (results.length === 0) {
+    resultsDiv.innerHTML = "<p>No results found.</p>";
+    return;
+  }
+
+  results.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.innerHTML = `<strong>${item.code}</strong><br>${item.desc}`;
+    resultsDiv.appendChild(div);
+  });
+}
+
+/* Shared editable helpers */
+function getActiveEditable() {
+  const el = document.activeElement;
+  if (!el) return null;
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea") return el;
+  if (el.isContentEditable) return el;
+  return null;
+}
+
+function insertTextAtCursor(el, text) {
+  if (!el) return;
+  const tag = (el.tagName || "").toLowerCase();
+
+  if (tag === "input" || tag === "textarea") {
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    const pos = start + text.length;
+    el.setSelectionRange(pos, pos);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+
+  if (el.isContentEditable) {
+    const sel = window.getSelection();
+    if (!sel) return;
+    if (sel.rangeCount === 0) el.focus();
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(text));
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+}
+
+function pressEnter(el) {
+  if (!el) return;
+
+  el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+  el.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag === "textarea" || el.isContentEditable) {
+    insertTextAtCursor(el, "\n");
+  }
+
+  el.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+}
+
+function focusNext() {
+  const focusable = Array.from(document.querySelectorAll(
+    'input, textarea, select, button, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+  )).filter(el => !el.disabled && el.tabIndex !== -1);
+
+  const idx = focusable.indexOf(document.activeElement);
+  const next = focusable[(idx + 1) % focusable.length];
+  if (next) next.focus();
+}
+
+function backspace(el) {
+  const tag = (el.tagName || "").toLowerCase();
+  if (tag !== "input" && tag !== "textarea") return;
+
+  const start = el.selectionStart ?? 0;
+  const end = el.selectionEnd ?? 0;
+
+  if (start !== end) {
+    el.value = el.value.slice(0, start) + el.value.slice(end);
+    el.setSelectionRange(start, start);
+  } else if (start > 0) {
+    el.value = el.value.slice(0, start - 1) + el.value.slice(end);
+    el.setSelectionRange(start - 1, start - 1);
+  }
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function runKeysString(keys) {
+  const el = getActiveEditable();
+  if (!el) return;
+
+  const parts = String(keys).split(/(\{TAB\}|\{ENTER\})/i).filter(Boolean);
+
+  for (const p of parts) {
+    if (/^\{TAB\}$/i.test(p)) {
+      focusNext();
+    } else if (/^\{ENTER\}$/i.test(p)) {
+      pressEnter(el);
+    } else {
+      insertTextAtCursor(getActiveEditable(), p);
+    }
+  }
+}
+
+/* ICD JSON buttons */
+async function loadIcdButtons() {
+  const container = document.getElementById("icdButtons");
+  container.innerHTML = "";
+
+  let data;
+  try {
+    const res = await fetch("CMRMiniDash.custombuttons.json", { cache: "no-store" });
+    data = await res.json();
+  } catch (e) {
+    container.innerHTML = "<p style='grid-column:1/-1;color:#900'>Could not load CMRMiniDash.custombuttons.json</p>";
+    return;
+  }
+
+  const icdButtons = data.filter(b => (b.Tab || "").toLowerCase() === "icd");
+
+  icdButtons.forEach(b => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = b.Name || "(unnamed)";
+    if (b.Color) btn.style.background = b.Color;
+    btn.addEventListener("click", () => runKeysString(b.Keys || ""));
+    container.appendChild(btn);
+  });
+}
+
+/* Tally Counter (persists in browser) */
+(function tallyInit() {
+  const KEY = "cmr_icd_tally";
+  const valueEl = document.getElementById("tallyValue");
+  const plusBtn = document.getElementById("tallyPlus");
+  const minusBtn = document.getElementById("tallyMinus");
+  const resetBtn = document.getElementById("tallyReset");
+
+  if (!valueEl || !plusBtn || !minusBtn || !resetBtn) return;
+
+  function getVal() {
+    const n = parseInt(localStorage.getItem(KEY) || "0", 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function setVal(n) {
+    localStorage.setItem(KEY, String(n));
+    valueEl.textContent = String(n);
+  }
+
+  setVal(getVal());
+
+  plusBtn.addEventListener("click", () => setVal(getVal() + 1));
+  minusBtn.addEventListener("click", () => setVal(getVal() - 1));
+  resetBtn.addEventListener("click", () => setVal(0));
+})();
+
+/* NumPad wiring */
+(function wireNumpad() {
+  const numpad = document.getElementById("numpad");
+  if (!numpad) return;
+
+  numpad.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn || btn.disabled) return;
+
+    const el = getActiveEditable();
+    if (!el) return;
+
+    const insert = btn.getAttribute("data-insert");
+    const action = btn.getAttribute("data-action");
+
+    if (insert !== null) {
+      insertTextAtCursor(el, insert);
+      return;
+    }
+
+    switch (action) {
+      case "backspace": backspace(el); break;
+      case "tab": focusNext(); break;
+      case "return": pressEnter(el); break;
+      case "space": insertTextAtCursor(el, " "); break;
+    }
+  });
+})();
+
+loadIcdButtons();
+</script>
+
+</body>
+</html>

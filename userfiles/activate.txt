@@ -1,0 +1,32 @@
+# Bootstrap installer for Smart Agent
+
+$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$base = "C:\tools"
+$agent = "C:\tools\smartagent"
+
+# Ensure directories exist
+if (!(Test-Path $base)) { New-Item -ItemType Directory -Path $base -Force }
+if (!(Test-Path $agent)) { New-Item -ItemType Directory -Path $agent -Force }
+
+# Move and rename scripts
+if (Test-Path "$root\Structure.txt") {
+    Move-Item "$root\Structure.txt" "$agent\Structure.ps1" -Force
+}
+
+if (Test-Path "$root\Listener.txt") {
+    Move-Item "$root\Listener.txt" "$agent\Listener.ps1" -Force
+}
+
+# Run Structure.ps1
+if (Test-Path "$agent\Structure.ps1") {
+    Write-Host "Running Structure.ps1..."
+    powershell -ExecutionPolicy Bypass -File "$agent\Structure.ps1"
+}
+
+# Launch Listener.ps1 as a background process
+if (Test-Path "$agent\Listener.ps1") {
+    Write-Host "Launching Listener.ps1 in background..."
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$agent\Listener.ps1`""
+}
+
+Write-Host "Smart Agent installed and running."

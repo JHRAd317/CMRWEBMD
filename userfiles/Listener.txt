@@ -1,0 +1,35 @@
+# Smart Agent Listener -- launches local Python HTTP listener on port 5123
+
+# Path for temporary Python agent script
+$agentPy = "$env:TEMP\cmr_smart_agent.py"
+
+# Python agent code (very simple HTTP server for demo)
+$py = @"
+import http.server
+import socketserver
+
+PORT = 5123
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type','text/plain')
+        self.end_headers()
+        self.wfile.write(b'Agent is alive!')
+
+if __name__ == '__main__':
+    with socketserver.TCPServer(('', PORT), Handler) as httpd:
+        print(f"Serving smart agent at http://127.0.0.1:{PORT}")
+        httpd.serve_forever()
+"@  
+
+# Write the Python agent script to disk
+Set-Content -Path $agentPy -Value $py -Encoding UTF8
+
+# Try to start the Python process for the agent
+Write-Host "Launching Smart Agent Python HTTP listener on port 5123..."
+Start-Process python -ArgumentList "`"$agentPy`"" -WindowStyle Hidden
+
+Write-Host "Smart Agent Listener launched. You may verify by visiting http://localhost:5123/"
+
+# Optionally, keep PowerShell agent running, logging, or just exit here.

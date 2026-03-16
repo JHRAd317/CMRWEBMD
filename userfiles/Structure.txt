@@ -1,0 +1,14 @@
+# Creates required folders for Smart Agent
+
+$base = "C:\tools"
+$agent = "C:\tools\smartagent"
+
+if (!(Test-Path $base)) {
+    New-Item -ItemType Directory -Path $base -Force
+}
+
+if (!(Test-Path $agent)) {
+    New-Item -ItemType Directory -Path $agent -Force
+}
+
+Write-Host "Folder structure created."

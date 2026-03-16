@@ -1,405 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>CMR MiniDash Web</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; text-align: center; }
-    h1 { margin-bottom: 20px; }
-    .grid { display: grid; gap: 10px; margin: 20px auto; }
-    .top-grid { grid-template-columns: repeat(4, 1fr); width: 90%; max-width: 600px; }
-    .top-grid > button:nth-child(-n+4) { background: #d9d9d9; color: #000; }
-    .top-grid > button:nth-child(-n+4):hover { background: #bfbfbf; }
-    .numpad { grid-template-columns: repeat(3, 1fr); width: 70%; max-width: 300px; }
-    .custom-grid { grid-template-columns: repeat(2, 1fr); width: 95%; max-width: 700px; }
-    button { padding: 15px; font-size: 16px; border: none; background: #0078d4; color: white; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #005fa3; }
-    #login-box, #content { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.15); width: 90%; max-width: 900px; margin: 20px auto; }
-    #login-box { max-width: 400px; margin-top: 80px; }
-    #content { display: none; }
-    #login-box input[type="password"] { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
-    #login-box button { width: 100%; margin-top: 15px; }
-    #status { display: inline-block; margin-top: 10px; padding: 6px 10px; border-radius: 999px; font-size: 13px; background: #eee; color: #333; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
 </head>
 <body>
-  <div id="login-box">
-    <h2>Enter Password</h2>
-    <input id="pw" type="password" placeholder="Password">
-    <button type="button" onclick="checkPassword()">Unlock</button>
-    <p id="error" style="color:red; display:none; margin-top:10px;">Incorrect password</p>
-  </div>
-  <div id="content">
-    <h1>CMR MiniDash Web</h1>
-<div id="status" aria-live="polite">Ready</div>
-<!-- Place this just below <div id="status" ...> -->
-<div id="agent-notice" style="margin:1em 0;color:#555;background:#fdffe0;padding:8px 16px;border-radius:8px;max-width:600px;display:inline-block;">
-  <b>Tip:</b> For instant automation, <b>Install Agent</b> & run it. If not, you'll be prompted to copy and paste manually.
-</div>
-    <div class="grid top-grid">
-      <button onclick="goTo('cpt.html')">CPT</button>
-      <button onclick="goTo('icd.html')">ICD</button>
-      <button onclick="goTo('util.html')">Utility</button>
-      <button onclick="goTo('info.html')">Info</button>
-      <button id="copyBtn" type="button">Copy</button>
-      <button id="pasteBtn" type="button">Paste</button>
-      <button id="snipBtn" type="button">Screenshot</button>
-      <button type="button" onclick="window.open('https://outlook.office.com')">Outlook</button>
-      <button id="rfaxAppBtn" type="button">RFax App</button>
-      <button type="button" onclick="window.open('https://rfaxweb.example.com')">RFax Web</button>
-      <button id="medbillBtn" type="button">Medbill</button>
-      <button id="psdasgnBtn" type="button">PSDASGN</button>
-      <button type="button" onclick="goTo('testpad.html')">Test Pad</button>
+    <div id="dashboard">
+        <!-- Existing dashboard content -->
     </div>
-    <h2>Number Pad</h2>
-    <div class="grid numpad" id="numpad">
-      <button type="button" data-insert="1">1</button><button type="button" data-insert="2">2</button><button type="button" data-insert="3">3</button>
-      <button type="button" data-insert="4">4</button><button type="button" data-insert="5">5</button><button type="button" data-insert="6">6</button>
-      <button type="button" data-insert="7">7</button><button type="button" data-insert="8">8</button><button type="button" data-insert="9">9</button>
-      <button type="button" data-action="backspace">Backspace</button>
-      <button type="button" data-insert="0">0</button>
-      <button type="button" data-action="tab">Tab</button>
-      <button type="button" data-action="return">Return</button>
-      <button type="button" data-insert="*">*</button>
-      <button type="button" data-action="space">Space</button>
+    <div id="unlockSection">
+        <h2>Enter Your Password</h2>
+        <input type="password" id="passwordInput" />
+        <button id="unlockButton">Unlock</button>
     </div>
-    <h2>Custom Buttons</h2>
-    <div class="grid custom-grid" id="customGrid">
-      <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Cor G</button>
-      <button type="button" data-macro="{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">Cor R</button>
-      <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}">PD RQ</button>
-      <button type="button" data-macro="{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">PD G</button>
-      <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}G{SLEEP 300}{TAB}">Inj G</button>
-      <button type="button" data-macro="{TAB}I{SLEEP 600}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}A{SLEEP 200}{TAB}">Inj Atty C</button>
-      <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}{TAB}">Med_MBill</button>
-      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 200}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MB2Medbill</button>
-      <button type="button" data-macro="{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">MedBill-A</button>
-      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}M{SLEEP 400}M{SLEEP 800}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">MBA2Medbill</button>
-      <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}">SubroMed</button>
-      <button type="button" data-macro="{TAB}S{SLEEP 300}{TAB}M{SLEEP 400}G{SLEEP 800}{TAB}">SubroGen</button>
-      <button type="button" data-macro="{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}">SubroDMND</button>
-      <button type="button" data-macro="{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}">PSD_PSDA</button>
-    </div>
-    <div style="margin-top:20px;">
-     <!-- ...existing HTML (up to just after </div> for custom buttons)... -->
+    <div id="smartAgentSection" style="display:none;">
+        <h2>Smart Agent Installation</h2>
+        <p>To proceed, please verify the Smart Agent:</p>
+        <button id="verifyAgentButton">Verify Agent</button>
+        <div id="downloadLinks">
+            <a href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Structure.txt">Download Structure.txt</a>
+            <a href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Listener.txt">Download Listener.txt</a>
+            <a href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/activate.txt">Download activate.txt</a>
+        </div>
     </div>
 
-    <!-- Local Agent Controls -->
-    <h2>Automation Agent</h2>
-    <button id="installAgentBtn" type="button">Install Automation Agent</button>
-    <button id="checkAgentBtn" type="button">Verify Agent</button>
-
-    <div style="margin-top:20px;">
-      <button type="button" onclick="localStorage.removeItem('cmr_unlocked'); location.reload();">Lock</button>
-    </div>
-  </div>
-  <script>
-    // ...all your previous JS (setStatus, sendToLocalAgent, etc)
-
-    // Local Agent controls (Installer and Verifier)
-    (function wireAgentInstaller() {
-      const installBtn = document.getElementById("installAgentBtn");
-      const checkBtn = document.getElementById("checkAgentBtn");
-      if (!installBtn || !checkBtn) return;
-
-      installBtn.addEventListener("click", () => {
-        window.location.href = "Start-CMRAgent.cmd";
-        setStatus("Installer downloaded. Double‑click it to activate the automation agent.");
-      });
-
-      checkBtn.addEventListener("click", async () => {
-        try {
-          const res = await fetch("http://127.0.0.1:8765/run", {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: "{TAB}",
-          });
-
-          if (res.ok) {
-            setStatus("Agent is running and responding.");
-          } else {
-            setStatus("Agent responded with an error.", true);
-          }
-        } catch (e) {
-          setStatus("Agent is NOT running. Please run Start‑CMRAgent.cmd.", true);
-        }
-      });
-    })();
-
-    // ...rest of your JS (already present in <script>)
-  </script>
-</body>
-</html> 
-      <button type="button" onclick="localStorage.removeItem('cmr_unlocked'); location.reload();">Lock</button>
-    </div>
-  </div>
-  <script>
-    const UNLOCK_KEY = "cmr_unlocked";
-    const CLIP_PREFIX = "CMRWEBMD:";
-    let lastPayload = "";
-    const LOCAL_AGENT_URL = "http://127.0.0.1:8765/run";
-    const LOCAL_AGENT_DELAY_MS = 1500;
-
-    async function sendToLocalAgent(payload) {
-      try {
-        const res = await fetch(LOCAL_AGENT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: payload
+    <script>
+        document.getElementById('unlockButton').addEventListener('click', function() {
+            // Logic for password unlock
+            var password = document.getElementById('passwordInput').value;
+            if (password === 'correct_password') { // Replace with actual password logic
+                document.getElementById('smartAgentSection').style.display = 'block';
+            } else {
+                alert('Invalid password!');
+            }
         });
-        if (!res.ok) throw new Error(`Agent HTTP ${res.status}`);
-        setStatus(`Sent to agent (typing in ~${LOCAL_AGENT_DELAY_MS}ms)`);
-        return true;
-      } catch (e) {
-        setStatus(`Agent send failed: ${e?.message||e}`, true);
-        return false;
-      }
-    }
-async function sendOrCopy(payload, labelWhenCopied) {
-  const ok = await sendToLocalAgent(payload);
-  if (!ok) {
-    // Try clipboard, then fallback to manual copy
-    const copied = await copyToClipboard(payload, labelWhenCopied);
-    if (!copied) {
-      setStatus(
-        "Agent is not running and clipboard copying is blocked. Please right-click the desired macro or result and select 'Copy', then paste it manually.",
-        true
-      );
-    }
-  }
-}
-async function copyToClipboard(text, label = 'Copied') {
-  lastPayload = text ?? '';
-  try {
-    await navigator.clipboard.writeText(`${CLIP_PREFIX}${lastPayload}`);
-    setStatus(`${label}: ${lastPayload || '(empty)'}`);
-    return true;
-  } catch (e) {
-    // Clipboard failed: chrome block, privacy, browser, etc.
-    // Allow user to manually select/copy payload if desired
-    setStatus(
-      'Clipboard blocked by browser settings. Please use HTTPS and allow clipboard, or right-click this page/macro and copy manually.',
-      true
-    );
-    return false;
-  }
-}
-    async function readFromClipboard() {
-      try {
-        const text = await navigator.clipboard.readText();
-        setStatus(`Clipboard read: ${text || '(empty)'}`);
-        return text;
-      } catch (e) {
-        setStatus('Clipboard read blocked by browser settings.', true);
-        return '';
-      }
-    }
-    function showContent() {
-      document.getElementById("login-box").style.display = "none";
-      document.getElementById("content").style.display = "block";
-    }
-    function checkPassword() {
-      const input = document.getElementById("pw").value;
-      const correct = "CMR2026!";
-      if (input === correct) {
-        localStorage.setItem(UNLOCK_KEY, "1");
-        showContent();
-      } else {
-        document.getElementById("error").style.display = "block";
-      }
-    }
-    (function autoUnlock() {
-      if (localStorage.getItem(UNLOCK_KEY) === "1") {
-        showContent();
-      }
-    })();
-    function goTo(page) { window.location.href = page; }
-    function getActiveEditable() {
-      const el = document.activeElement;
-      if (!el) return null;
-      const tag = (el.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return el;
-      if (el.isContentEditable) return el;
-      return null;
-    }
-    function insertTextAtCursor(el, text) {
-      if (!el) return false;
-      const tag = (el.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea') {
-        const start = el.selectionStart ?? el.value.length;
-        const end = el.selectionEnd ?? el.value.length;
-        el.value = el.value.slice(0, start) + text + el.value.slice(end);
-        const pos = start + text.length;
-        el.setSelectionRange(pos, pos);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        return true;
-      }
-      if (el.isContentEditable) {
-        const sel = window.getSelection();
-        if (!sel) return false;
-        if (sel.rangeCount === 0) el.focus();
-        const range = sel.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(document.createTextNode(text));
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        return true;
-      }
-      return false;
-    }
-    function backspace(el) {
-      const tag = (el.tagName || '').toLowerCase();
-      if (tag !== 'input' && tag !== 'textarea') return;
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      if (start !== end) {
-        el.value = el.value.slice(0, start) + el.value.slice(end);
-        el.setSelectionRange(start, start);
-      } else if (start > 0) {
-        el.value = el.value.slice(0, start - 1) + el.value.slice(end);
-        el.setSelectionRange(start - 1, start - 1);
-      }
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    function focusNext() {
-      const focusable = Array.from(document.querySelectorAll(
-        'input, textarea, select, button, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
-      )).filter(el => !el.disabled && el.tabIndex !== -1);
-      const idx = focusable.indexOf(document.activeElement);
-      const next = focusable[(idx + 1) % focusable.length];
-      if (next) next.focus();
-    }
-    function pressEnter() {
-      const el = document.activeElement;
-      if (!el) return;
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
-      el.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
-      const tag = (el.tagName || '').toLowerCase();
-      if (tag === 'textarea' || el.isContentEditable) {
-        insertTextAtCursor(el, "\n");
-      }
-      el.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
-    }
-    (function wireTopButtons() {
-      const copyBtn = document.getElementById('copyBtn');
-      const pasteBtn = document.getElementById('pasteBtn');
-      if (copyBtn) {
-        copyBtn.addEventListener('click', () => copyToClipboard(lastPayload, 'Copied last'));
-      }
-      if (pasteBtn) {
-        pasteBtn.addEventListener('click', async () => {
-          const txt = await readFromClipboard();
-          if (!txt) return;
-          const el = getActiveEditable();
-          if (el) {
-            insertTextAtCursor(el, txt);
-            setStatus(`Pasted into field: ${txt}`);
-          } else {
-            setStatus('No active field on this page to paste into (expected). Use Ctrl+V in target app/site.', true);
-          }
+
+        document.getElementById('verifyAgentButton').addEventListener('click', function() {
+            // Logic for verifying the Smart Agent
+            // On success: Unlock dashboard features
+            alert('Smart Agent verified! Unlocking dashboard features...');
+            // Insert code to unlock dashboard features
         });
-      }
-    })();
-    // NUMPAD: send to agent, then fallback to clipboard
-    (function wireNumpad() {
-      const numpad = document.getElementById('numpad');
-      if (!numpad) return;
-      numpad.addEventListener('click', async (e) => {
-        const btn = e.target.closest('button');
-        if (!btn || btn.disabled) return;
-        const insert = btn.getAttribute('data-insert');
-        const action = btn.getAttribute('data-action');
-        if (insert !== null) {
-          await sendOrCopy(insert, 'Copied');
-          const el = getActiveEditable();
-          if (el) insertTextAtCursor(el, insert);
-          return;
-        }
-        const el = getActiveEditable();
-        switch (action) {
-          case 'backspace':
-            if (el) backspace(el);
-            await sendOrCopy('{BACKSPACE}', 'Copied');
-            break;
-          case 'tab':
-            focusNext();
-            await sendOrCopy('{TAB}', 'Copied');
-            break;
-          case 'return':
-            pressEnter();
-            await sendOrCopy('{ENTER}', 'Copied');
-            break;
-          case 'space':
-            if (el) insertTextAtCursor(el, ' ');
-            await sendOrCopy(' ', 'Copied');
-            break;
-        }
-      });
-    })();
-    // CUSTOM GRID: send to agent, then fallback to clipboard
-    (function wireCustomGrid() {
-      const grid = document.getElementById('customGrid');
-      if (!grid) return;
-      grid.addEventListener('click', async (e) => {
-        const btn = e.target.closest('button');
-        if (!btn || btn.disabled) return;
-        const macro = btn.getAttribute('data-macro');
-        if (!macro) return;
-        await sendOrCopy(macro, 'Copied macro');
-      });
-    })();
-  </script>
-<div class="agent-download-guide" style="background:#f9f9fb;border:1px solid #dadbe0;border-radius:8px;padding:1.5em;margin:2em 0;">
-  <h3 style="margin-top:0;">Install the Smart Agent</h3>
-  <ol style="font-size:1.07em;">
-    <li>
-      Download the following three files as <span style="color:#355;">.txt</span> using the buttons below.<br>
-      <span style="font-size:0.92em;color:#888;">
-        (Files are provided as .txt to work with all browsers and security settings.)
-      </span>
-    </li>
-    <li>
-      <strong>After downloading:</strong> <br>
-      <b>Rename</b> <span style="color:#333;">activate.txt</span> to <span style="color:#116;">activate.ps1</span> on your computer.<br>
-      <span style="font-size:0.93em;color:#999;">
-        (Right-click the file, select <b>Rename</b>, and change <b>activate.txt</b> to <b>activate.ps1</b>.)
-      </span>
-    </li>
-    <li>
-      <strong>Run</strong> <span style="color:#116;">activate.ps1</span> with PowerShell:<br>
-      <span style="color:#444;">Right-click the file and select <b>“Run with PowerShell”</b>.</span>
-    </li>
-    <li>
-      That’s it! The installer will finish setup and automatically run your agent.
-    </li>
-  </ol>
-  <div class="agent-download-buttons" style="margin-top:2em;">
-    <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Structure.txt','Structure.txt')">Download 1 — Structure.txt</button>
-    <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Listener.txt','Listener.txt')">Download 2 — Listener.txt</button>
-    <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/activate.txt','activate.txt')">Download 3 — activate.txt</button>
-  </div>
-  <p style="color:#a66;font-size:0.96em;margin-top:1.25em;">
-    <b>Why .txt?</b> For security, browsers don’t allow direct downloading of .ps1 files. By downloading as .txt and renaming locally, you get a safe, working install every time.
-  </p>
-</div>
-<script>
-async function downloadScript(source, targetName) {
-    try {
-        const response = await fetch(source);
-        if (!response.ok) { alert("File not found: " + source); return; }
-        const text = await response.text();
-        const blob = new Blob([text], { type: "text/plain" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = targetName;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(link.href), 1500);
-    } catch(e) {
-        alert("Download failed: " + e);
-    }
-}
-</script>
+    </script>
 </body>
 </html>

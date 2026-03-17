@@ -88,21 +88,17 @@ document.getElementById('unlockButton').addEventListener('click', function() {
         alert('Invalid password!');
     }
 });
-async function downloadScript(source, targetName) {
-    try {
-        const response = await fetch(source);
-        if (!response.ok) { alert("File not found: " + source); return; }
-        const text = await response.text();
-        const blob = new Blob([text], { type: "text/plain" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = targetName;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(link.href), 1500);
-    } catch(e) {
-        alert("Download failed: " + e);
-    }
+
+// --- Fixed downloadScript (anchor based: no fetch/CORS, works for GitHub) ---
+function downloadScript(source, targetName) {
+    const link = document.createElement("a");
+    link.href = source;
+    link.download = targetName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
+
 document.getElementById('verifyAgentButton').addEventListener('click', async function() {
     document.getElementById('verifyAgentButton').innerText = "Verifying...";
     document.getElementById('agent-fail').classList.add('hidden');

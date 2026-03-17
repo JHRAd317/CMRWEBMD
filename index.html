@@ -3,45 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>CMR MiniDash Web</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; text-align: center; }
+        h1 { margin-bottom: 20px; }
+        .hidden { display: none; }
+        .grid { display: grid; gap: 10px; margin: 20px auto; }
+        .top-grid { grid-template-columns: repeat(4, 1fr); width: 90%; max-width: 600px; }
+        .numpad { grid-template-columns: repeat(3, 1fr); width: 70%; max-width: 300px; }
+        .custom-grid { grid-template-columns: repeat(2, 1fr); width: 95%; max-width: 700px; }
+        button { padding: 15px; font-size: 16px; border: none; background: #0078d4; color: white; border-radius: 6px; cursor: pointer; }
+        button:hover { background: #005fa3; }
+        #unlockSection, #smartAgentSection, #dashboard-content { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.15); width: 90%; max-width: 900px; margin: 20px auto; }
+        #unlockSection { max-width: 400px; margin-top: 80px; }
+        #dashboard-content { margin-top: 40px;}
+        #passwordInput { width:80%; padding:12px; border-radius:6px; border:1px solid #ccc; font-size:16px; }
+        #status { display: inline-block; margin-top: 10px; padding: 6px 10px; border-radius: 999px; font-size: 13px; background: #eee; color: #333; }
+        .agent-download-buttons button {margin-bottom: .8em; margin-right: .4em;}
+        .msg-success {color:#218a41; font-weight:600; margin:1em 0;}
+        .msg-fail {color:#c31; font-weight:bold; margin:1em 0;}
+    </style>
 </head>
 <body>
-    <div id="dashboard">
-        <!-- Existing dashboard content -->
-    </div>
-    <div id="unlockSection">
-        <h2>Enter Your Password</h2>
-        <input type="password" id="passwordInput" />
-        <button id="unlockButton">Unlock</button>
-    </div>
-    <div id="smartAgentSection" style="display:none;">
-        <h2>Smart Agent Installation</h2>
-        <p>To proceed, please verify the Smart Agent:</p>
-        <button id="verifyAgentButton">Verify Agent</button>
-        <div id="downloadLinks">
-            <a href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Structure.txt">Download Structure.txt</a>
-            <a href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Listener.txt">Download Listener.txt</a>
-            <a href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/activate.txt">Download activate.txt</a>
-        </div>
-    </div>
+  <!-- Password Unlock -->
+  <div id="unlockSection">
+    <h2>Enter Your Password</h2>
+    <input type="password" id="passwordInput" autocomplete="current-password" />
+    <label style="font-size:90%;margin-left:10px;">
+      <input type="checkbox" id="showPassword" /> Show password
+    </label>
+    <br><br>
+    <button id="unlockButton">Unlock</button>
+  </div>
 
-    <script>
-        document.getElementById('unlockButton').addEventListener('click', function() {
-            // Logic for password unlock
-            var password = document.getElementById('passwordInput').value;
-            if (password === 'correct_password') { // Replace with actual password logic
-                document.getElementById('smartAgentSection').style.display = 'block';
-            } else {
-                alert('Invalid password!');
-            }
-        });
+  <!-- Smart Agent Install/Verification -->
+  <div id="smartAgentSection" class="hidden">
+    <h2>Smart Agent Installation Required</h2>
+    <ol style="font-size:1.09em;text-align:left;max-width:420px;margin:20px auto 20px auto;">
+        <li>Download these three files (<b>.txt</b>):
+          <div class="agent-download-buttons">
+            <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Structure.txt','Structure.txt')">Structure.txt</button>
+            <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Listener.txt','Listener.txt')">Listener.txt</button>
+            <button onclick="downloadScript('https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/activate.txt','activate.txt')">activate.txt</button>
+          </div>
+        </li>
+        <li>Rename <b>activate.txt</b> to <b>activate.ps1</b>.</li>
+        <li>Right-click <b>activate.ps1</b> and select <b>Run with PowerShell</b>.</li>
+        <li>Click <b>Verify Smart Agent</b> below.<br>
+            (If successful, your dashboard unlocks!)
+        </li>
+    </ol>
+    <button class="verify-btn" id="verifyAgentButton" style="background:#31bb5f;font-size:1em;padding:0.6em 1.6em;margin-bottom:.5em;border-radius:5px;border:1px solid #7773;color:#fff;">
+      Verify Smart Agent
+    </button>
+    <div id="agent-success" class="msg-success hidden">
+      ✔ The Smart Agent is running! Dashboard will unlock below.
+    </div>
+    <div id="agent-fail" class="msg-fail hidden">
+      Smart Agent could not be reached at <code>http://localhost:5123/</code>.
+      <br>
+      Please ensure you've run <b>activate.ps1</b> and try again.
+    </div>
+  </div>
 
-        document.getElementById('verifyAgentButton').addEventListener('click', function() {
-            // Logic for verifying the Smart Agent
-            // On success: Unlock dashboard features
-            alert('Smart Agent verified! Unlocking dashboard features...');
-            // Insert code to unlock dashboard features
-        });
-    </script>
+  <!-- Your main dashboard -->
+  <div id="dashboard-content" class="hidden">
+    <h1>CMR MiniDash Web</h1>
+    <div id="status" aria-live="polite">Ready</div>
+    <!-- Existing dashboard content goes below (from your previous index) -->
+    <!-- ... Copy your dashboard/tools here ... -->
+  </div>
+
+<script>
+document.getElementById('showPassword').addEventListener('change', function() {
+    const pwInput = document.getElementById('passwordInput');
+    pwInput.type = this.checked ? 'text' : 'password';
+});
+document.getElementById('unlockButton').addEventListener('click', function() {
+    var password = document.getElementById('passwordInput').value;
+    if (password === 'CMR2026!') {
+        document.getElementById('smartAgentSection').classList.remove('hidden');
+        document.getElementById('unlockSection').classList.add('hidden');
+    } else {
+        alert('Invalid password!');
+    }
+});
+async function downloadScript(source, targetName) {
+    try {
+        const response = await fetch(source);
+        if (!response.ok) { alert("File not found: " + source); return; }
+        const text = await response.text();
+        const blob = new Blob([text], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = targetName;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+    } catch(e) {
+        alert("Download failed: " + e);
+    }
+}
+document.getElementById('verifyAgentButton').addEventListener('click', async function() {
+    document.getElementById('verifyAgentButton').innerText = "Verifying...";
+    document.getElementById('agent-fail').classList.add('hidden');
+    document.getElementById('agent-success').classList.add('hidden');
+    let ok = false;
+    try {
+        const res = await fetch('http://localhost:5123/', { method: 'GET', cache: 'no-store' });
+        if(res.ok){
+            let txt = await res.text();
+            if(txt && txt.match(/alive/i)) ok = true;
+        }
+    } catch(e){}
+    document.getElementById('verifyAgentButton').innerText = "Verify Smart Agent";
+    if(ok) {
+        document.getElementById('agent-success').classList.remove('hidden');
+        document.getElementById('agent-fail').classList.add('hidden');
+        setTimeout(() => {
+            document.getElementById('dashboard-content').classList.remove('hidden');
+            document.getElementById('smartAgentSection').classList.add('hidden');
+        }, 900);
+    } else {
+        document.getElementById('agent-success').classList.add('hidden');
+        document.getElementById('agent-fail').classList.remove('hidden');
+    }
+});
+</script>
 </body>
 </html>

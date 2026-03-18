@@ -1,0 +1,795 @@
+# =======================
+# CMR Mini Dashboard (Compact / Feature-complete)
+# NOTE: Created by JRad TPXA227852
+# Date: 2026-02-02
+# Version: v2026.02.06-12 (Hotfix)
+# - FIX: Restored `New-Button` helper before any usage (prevents CommandNotFound)
+# - Bottom Bar keeps V2T + Footer pinned while scrolling (INDEX II, ICD, CPT)
+# - ICD Tally restored (plus INDEX II)
+# - Numeric keypad on INDEX II, ICD, CPT
+# - FULL Utility (Add Tab/Button, Edit, SAVE, Diagnostics, Restore, Remove Button, Relaunch)
+# =======================
+
+# --- Force STA (WinForms/Clipboard/UIA) ---
+try {
+  if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA' -and $PSCommandPath -and $env:CMR_NORELAUNCH -ne '1') {
+    Start-Process powershell.exe "-STA -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" | Out-Null
+    exit
+  }
+} catch {}
+
+$EnableLog = $true
+$LogDir = 'C:\\Tools'; $LogBase='CMRMiniDash'
+try { if (-not (Test-Path $LogDir)) { New-Item -Path $LogDir -ItemType Directory -Force | Out-Null } } catch {}
+$LogFile = if (Test-Path $LogDir) { Join-Path $LogDir "$LogBase.log" } else { Join-Path $env:TEMP "$LogBase.log" }
+function Write-Log([string]$m){ if(-not $EnableLog){return}; try{ Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff') $m" }catch{} }
+Write-Log 'Script start (pre-UI)'
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+[void][System.Windows.Forms.Application]::EnableVisualStyles()
+[System.Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
+try { [System.Windows.Forms.Application]::SetUnhandledExceptionMode([System.Windows.Forms.UnhandledExceptionMode]::CatchException) } catch {}
+
+# --- Crash guards ---
+try {
+  [System.Windows.Forms.Application]::Add_ThreadException({ param($s,$e)
+    Write-Log ("ThreadException: " + $e.Exception.Message)
+    try{ [System.Windows.Forms.MessageBox]::Show("MiniDash error: " + $e.Exception.Message,"CMR Mini Dashboard",'OK','Warning') | Out-Null }catch{}
+  })
+} catch {}
+try { [AppDomain]::CurrentDomain.add_UnhandledException({ param($s,$ea)
+  Write-Log ("UnhandledException: " + ($ea.ExceptionObject | Out-String)) }) } catch {}
+
+# --- Win32 focus helpers ---
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public static class Win32 {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+}
+"@
+$script:lastHwnd=[IntPtr]::Zero
+function Get-FG { [Win32]::GetForegroundWindow() }
+function Focus-LastWindow {
+  try {
+    $fg=Get-FG
+    if ($fg -ne [IntPtr]::Zero -and $script:form -and $fg -ne $script:form.Handle) { $script:lastHwnd=$fg }
+    if ($script:lastHwnd -eq [IntPtr]::Zero) { return $false }
+    if ($fg -ne $script:lastHwnd) { [void][Win32]::ShowWindowAsync($script:lastHwnd,5); [void][Win32]::SetForegroundWindow($script:lastHwnd) }
+    return $true
+  } catch { Write-Log "Focus-LastWindow: $($_.Exception.Message)"; return $false }
+}
+function Ensure-TargetFast {
+  try {
+    $fg=Get-FG
+    if ($fg -eq [IntPtr]::Zero) { return Focus-LastWindow }
+    if ($script:form -and $fg -eq $script:form.Handle) { return Focus-LastWindow }
+    $script:lastHwnd=$fg; return $true
+  } catch { return $false }
+}
+
+# --- Hotkeys helper (Win+H) compiled once ---
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public static class Hotkeys {
+  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
+  public const byte VK_LWIN = 0x5B; public const byte VK_H = 0x48;
+  public const int KEYEVENTF_EXTENDEDKEY=0x1; public const int KEYEVENTF_KEYUP=0x2;
+  public static void WinH(){
+    keybd_event(VK_LWIN,0,KEYEVENTF_EXTENDEDKEY,0);
+    keybd_event(VK_H,0,KEYEVENTF_EXTENDEDKEY,0);
+    keybd_event(VK_H,0,KEYEVENTF_KEYUP,0);
+    keybd_event(VK_LWIN,0,KEYEVENTF_KEYUP,0);
+  }
+}
+"@
+function Invoke-WinH { try{ [Hotkeys]::WinH() }catch{} }
+function Invoke-V2T-NoDialog {
+  try {
+    $restore = $false
+    try{ if($script:form -and $script:form.TopMost){ $restore = $true; $script:form.TopMost = $false } }catch{}
+    Start-Sleep -Milliseconds 120
+    Invoke-WinH
+    Start-Sleep -Milliseconds 450
+    try{ if($restore){ $script:form.TopMost = $true } }catch{}
+  } catch {}
+}
+
+
+# --- UI helper (RESTORED) ---
+function New-Button([string]$text,[int]$x,[int]$y,[int]$w,[int]$h,[string]$bg,[int]$font,[scriptblock]$onClick){
+  $b=New-Object System.Windows.Forms.Button
+  $b.Text=$text
+  $b.Size=[System.Drawing.Size]::new($w,$h)
+  $b.Location=[System.Drawing.Point]::new($x,$y)
+  try{ $b.BackColor=[System.Drawing.ColorTranslator]::FromHtml($bg) }catch{ $b.BackColor=[System.Drawing.ColorTranslator]::FromHtml('#566573') }
+  $b.ForeColor=[System.Drawing.Color]::White
+  $b.FlatStyle='Flat'
+  $b.FlatAppearance.BorderSize=0
+  $b.Font=New-Object System.Drawing.Font('Segoe UI',$font,[System.Drawing.FontStyle]::Bold)
+  if($onClick){ $b.Add_Click($onClick) }
+  return $b
+}
+
+# --- Optional UI Automation ---
+$script:HasUIA=$null
+function Ensure-UIA { if ($script:HasUIA -ne $null){ return $script:HasUIA }
+  try { Add-Type -AssemblyName UIAutomationClient; Add-Type -AssemblyName UIAutomationTypes; $script:HasUIA=$true } catch { $script:HasUIA=$false }
+  $script:HasUIA }
+function Get-FocusedSelectionText { if (-not (Ensure-UIA)) { return $null }
+  try { $ae=[System.Windows.Automation.AutomationElement]::FocusedElement
+    if ($null -eq $ae) { return $null }
+    $tp=$null
+    if ($ae.TryGetCurrentPattern([System.Windows.Automation.TextPattern]::Pattern,[ref]$tp)) { $sel=$tp.GetSelection(); if ($sel -and $sel.Length -gt 0) { return $sel[0].GetText(-1) } }
+    $vp=$null
+    if ($ae.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern,[ref]$vp)) { return $vp.Current.Value }
+  } catch { Write-Log "Get-FocusedSelectionText: $($_.Exception.Message)" }
+  $null }
+
+# --- Safe buffer + copy/paste ---
+$script:SafeBuffer=""
+function SafeCopy-Selection {
+  $uia=Get-FocusedSelectionText
+  if ($uia -and $uia.Length -gt 0) { $script:SafeBuffer=$uia; try{ [System.Windows.Forms.Clipboard]::SetText($uia) }catch{}; return }
+  if (-not (Focus-LastWindow)) { return }
+  try {
+    [System.Windows.Forms.SendKeys]::SendWait('^c'); Start-Sleep -Milliseconds 60
+    $t=''; try{ if([System.Windows.Forms.Clipboard]::ContainsText()){ $t=[System.Windows.Forms.Clipboard]::GetText() } }catch{}
+    $script:SafeBuffer=$t
+  } catch {}
+}
+function SafePaste-Buffer { if ([string]::IsNullOrEmpty($script:SafeBuffer)) { return }
+  if (-not (Ensure-TargetFast)) { return }
+  try { [System.Windows.Forms.SendKeys]::Send($script:SafeBuffer) } catch {} }
+
+# --- Send helpers ---
+function SendKeys-ToLastWindow([string]$keys,[bool]$fast=$false){ if($fast){ if(-not (Ensure-TargetFast)){return} } else { if(-not (Focus-LastWindow)){return} }
+  try { if($fast){[System.Windows.Forms.SendKeys]::Send($keys)} else {[System.Windows.Forms.SendKeys]::SendWait($keys)} } catch {} }
+function TypeText-ToLastWindow([string]$text,[bool]$enter=$false,[bool]$fast=$false){ if($fast){ if(-not (Ensure-TargetFast)){return} } else { if(-not (Focus-LastWindow)){return} }
+  try { if($fast){[System.Windows.Forms.SendKeys]::Send($text)} else {[System.Windows.Forms.SendKeys]::SendWait($text)}; if($enter){ if($fast){[System.Windows.Forms.SendKeys]::Send('{ENTER}')} else {[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')} } } catch {} }
+
+function Play-PayloadWithSleep([string]$payload) {
+    if ([string]::IsNullOrWhiteSpace($payload)) { return }
+
+    # Split the payload on tokens like {SLEEP 500} but keep the tokens
+    $parts = [System.Text.RegularExpressions.Regex]::Split(
+        $payload, '(\{SLEEP\s+\d+\})'
+    ) | Where-Object { $_ -ne '' }
+
+    foreach ($p in $parts) {
+        if ($p -match '^\{SLEEP\s+(\d+)\}$') {
+            $ms = [int]$Matches[1]
+            Start-Sleep -Milliseconds $ms
+        } else {
+            # Send the fragment as SendKeys (supports {TAB}, {ENTER}, ^c, etc.)
+            SendKeys-ToLastWindow $p $false
+        }
+    }
+}
+
+# --- Custom action executor ---
+function Invoke-CustomAction([string]$payload,[string]$mode='auto'){
+  if([string]::IsNullOrWhiteSpace($payload)){return}
+  switch ($mode) { 'text' { TypeText-ToLastWindow $payload $false $false }
+    'sendkeys' { Play-PayloadWithSleep $payload }
+    default { if($payload -match '[\{\}\^\%\+]'){ SendKeys-ToLastWindow $payload $false } else { TypeText-ToLastWindow $payload $false $false } } } }
+
+# --- Small UI helpers: pop-up dialogs for Utility ---
+function Show-InputDialog([string]$title,[string]$prompt,[string]$default){ $f=New-Object System.Windows.Forms.Form; $f.Text=$title; $f.StartPosition='CenterParent'; $f.FormBorderStyle='FixedDialog'; $f.MinimizeBox=$false; $f.MaximizeBox=$false; $f.Size=[System.Drawing.Size]::new(420,150); $f.TopMost=$true; $f.BackColor=[System.Drawing.SystemColors]::Window
+  $lbl=New-Object System.Windows.Forms.Label; $lbl.Text=$prompt; $lbl.AutoSize=$true; $lbl.Location=[System.Drawing.Point]::new(12,12)
+  $tb =New-Object System.Windows.Forms.TextBox; $tb.Location=[System.Drawing.Point]::new(12,40); $tb.Size=[System.Drawing.Size]::new(380,24); $tb.Text=$default
+  $ok =New-Object System.Windows.Forms.Button; $ok.Text='OK'; $ok.Location=[System.Drawing.Point]::new(236,80); $ok.Size=[System.Drawing.Size]::new(70,28)
+  $no =New-Object System.Windows.Forms.Button; $no.Text='Cancel'; $no.Location=[System.Drawing.Point]::new(322,80); $no.Size=[System.Drawing.Size]::new(70,28)
+  $f.AcceptButton=$ok; $f.CancelButton=$no; $ok.Add_Click({ $f.Tag=$tb.Text; $f.DialogResult='OK'; $f.Close() }); $no.Add_Click({ $f.Tag=$null; $f.DialogResult='Cancel'; $f.Close() })
+  $f.Controls.AddRange(@($lbl,$tb,$ok,$no)); $dr=$f.ShowDialog($script:form); if($dr -ne 'OK'){ return $null } ; [string]$f.Tag }
+function Show-SelectDialog(
+    [string]$title,
+    [string]$prompt,
+    [object[]]$items,
+    [int]$w = 420,
+    [int]$h = 220
+){
+    $f  = New-Object System.Windows.Forms.Form
+    $f.Text            = $title
+    $f.StartPosition   = 'CenterParent'
+    $f.FormBorderStyle = 'FixedDialog'
+    $f.MinimizeBox     = $false
+    $f.MaximizeBox     = $false
+    $f.TopMost         = $true
+    $f.BackColor       = [System.Drawing.SystemColors]::Window
+    $f.AutoScaleMode   = [System.Windows.Forms.AutoScaleMode]::None
+
+    $f.ClientSize      = [System.Drawing.Size]::new($w, $h)
+    $f.MinimumSize     = [System.Drawing.Size]::new($w + ($f.Size.Width - $f.ClientSize.Width),
+                                                   $h + ($f.Size.Height - $f.ClientSize.Height))
+    $f.MaximumSize     = $f.MinimumSize
+
+    $lbl               = New-Object System.Windows.Forms.Label
+    $lbl.Text          = $prompt
+    $lbl.AutoSize      = $true
+    $lbl.Location      = [System.Drawing.Point]::new(12, 12)
+
+    $lb                = New-Object System.Windows.Forms.ListBox
+    $lb.Location       = [System.Drawing.Point]::new(12, 36)
+    $lb.Size           = [System.Drawing.Size]::new(380, $h - 36 - 64)
+    $lb.SelectionMode  = 'One'
+    $lb.Anchor         = 'Top,Left,Right,Bottom'
+    $lb.IntegralHeight = $false
+
+    foreach($i in $items){ [void]$lb.Items.Add($i) }
+    if($lb.Items.Count -gt 0){ $lb.SelectedIndex = 0 }
+
+    $ok                = New-Object System.Windows.Forms.Button
+    $ok.Text           = 'OK'
+    $ok.Size           = [System.Drawing.Size]::new(70, 28)
+    $ok.Location       = [System.Drawing.Point]::new($w - 168, $h - 40)
+    $ok.Anchor         = 'Bottom,Right'
+
+    $no                = New-Object System.Windows.Forms.Button
+    $no.Text           = 'Cancel'
+    $no.Size           = [System.Drawing.Size]::new(70, 28)
+    $no.Location       = [System.Drawing.Point]::new($w - 88, $h - 40)
+    $no.Anchor         = 'Bottom,Right'
+
+    $f.AcceptButton    = $ok
+    $f.CancelButton    = $no
+
+    $ok.Add_Click({
+        if($lb.SelectedItem){ $f.Tag = [string]$lb.SelectedItem } else { $f.Tag = $null }
+        $f.DialogResult = 'OK'; $f.Close()
+    })
+    $no.Add_Click({
+        $f.Tag = $null
+        $f.DialogResult = 'Cancel'; $f.Close()
+    })
+
+    $f.Controls.AddRange(@($lbl,$lb,$ok,$no))
+    $dr = $f.ShowDialog($script:form)
+    if($dr -ne 'OK'){ return $null }
+    [string]$f.Tag
+}
+
+function Show-ModeDialog([string]$default){ $f=New-Object System.Windows.Forms.Form; $f.Text='Send mode'; $f.StartPosition='CenterParent'; $f.FormBorderStyle='FixedDialog'; $f.MinimizeBox=$false; $f.MaximizeBox=$false; $f.Size=[System.Drawing.Size]::new(320,180); $f.TopMost=$true; $f.BackColor=[System.Drawing.SystemColors]::Window
+  $lbl=New-Object System.Windows.Forms.Label; $lbl.Text='How should the payload be sent?'; $lbl.AutoSize=$true; $lbl.Location=[System.Drawing.Point]::new(12,12)
+  $rb1=New-Object System.Windows.Forms.RadioButton; $rb1.Text='auto'; $rb1.Location=[System.Drawing.Point]::new(16,40); $rb1.Checked=($default -eq 'auto')
+  $rb2=New-Object System.Windows.Forms.RadioButton; $rb2.Text='text'; $rb2.Location=[System.Drawing.Point]::new(16,66); $rb2.Checked=($default -eq 'text')
+  $rb3=New-Object System.Windows.Forms.RadioButton; $rb3.Text='sendkeys'; $rb3.Location=[System.Drawing.Point]::new(16,92); $rb3.Checked=($default -eq 'sendkeys')
+  $ok =New-Object System.Windows.Forms.Button; $ok.Text='OK'; $ok.Location=[System.Drawing.Point]::new(144,120); $ok.Size=[System.Drawing.Size]::new(70,28)
+  $no =New-Object System.Windows.Forms.Button; $no.Text='Cancel'; $no.Location=[System.Drawing.Point]::new(224,120); $no.Size=[System.Drawing.Size]::new(70,28)
+  $f.AcceptButton=$ok; $f.CancelButton=$no; $ok.Add_Click({ $v='auto'; if($rb2.Checked){$v='text'}; if($rb3.Checked){$v='sendkeys'}; $f.Tag=$v; $f.DialogResult='OK'; $f.Close() }); $no.Add_Click({ $f.Tag=$null; $f.DialogResult='Cancel'; $f.Close() })
+  $f.Controls.AddRange(@($lbl,$rb1,$rb2,$rb3,$ok,$no)); $dr=$f.ShowDialog($script:form); if($dr -ne 'OK'){ return $null } ; [string]$f.Tag }
+function Show-ColorPicker([string]$hexDefault){ $cd=New-Object System.Windows.Forms.ColorDialog; try{ $cd.FullOpen=$true }catch{}; try{ $cd.Color=[System.Drawing.ColorTranslator]::FromHtml($hexDefault) }catch{}; if($cd.ShowDialog() -eq 'OK'){ return [System.Drawing.ColorTranslator]::ToHtml($cd.Color) } else { return $hexDefault } }
+
+# --- Persistence helpers ---
+function Load-JsonArray([string]$path){ try { if(Test-Path $path){ $raw=Get-Content -Path $path -Raw; if($raw -and $raw.Trim().Length -gt 0){ $p=$raw | ConvertFrom-Json; if($p -is [System.Array]){ return ,$p } elseif($p){ return ,@($p) } } } } catch { Write-Log "Load-JsonArray: $($_.Exception.Message)" } @() }
+function Save-Json([object]$obj,[string]$path,[int]$depth){ try { ($obj | ConvertTo-Json -Depth $depth) | Set-Content -Path $path -Encoding UTF8; $true } catch { Write-Log "Save-Json: $($_.Exception.Message)"; $false } }
+
+# --- Tally persistence shared ---
+$script:Tally = 0
+function Load-Tally { try { if(Test-Path $TallyFile){ $raw=Get-Content -Path $TallyFile -Raw; if($raw -and $raw.Trim().Length -gt 0){ $obj=$raw | ConvertFrom-Json; if($obj -and $obj.PSObject.Properties.Name -contains 'Value'){ return [int]$obj.Value } } } } catch { Write-Log "Load-Tally: $($_.Exception.Message)" } 0 }
+function Save-Tally { try{ $o=[pscustomobject]@{ Value=[int]$script:Tally }; Save-Json $o $TallyFile 3 | Out-Null } catch { Write-Log "Save-Tally: $($_.Exception.Message)" } }
+
+$CustomTabsFile = Join-Path $LogDir 'CMRMiniDash.customtabs.json'
+$CustomButtonsFile = Join-Path $LogDir 'CMRMiniDash.custombuttons.json'
+$HiddenButtonsFile = Join-Path $LogDir 'CMRMiniDash.hiddenbuttons.json'
+$TallyFile = Join-Path $LogDir 'CMRMiniDash.tally.json'
+$script:CustomTabNames = Load-JsonArray $CustomTabsFile
+$script:CustomButtons = Load-JsonArray $CustomButtonsFile
+$script:HiddenButtons = Load-JsonArray $HiddenButtonsFile
+$script:ChangeCount = 0
+function Save-CustomTabs { Save-Json $script:CustomTabNames $CustomTabsFile 3 }
+function Save-CustomButtons { Save-Json $script:CustomButtons $CustomButtonsFile 6 }
+function Save-HiddenButtons { Save-Json $script:HiddenButtons $HiddenButtonsFile 3 }
+function Is-Hidden([string]$tab,[string]$name){ $null -ne ($script:HiddenButtons | Where-Object { $_.Tab -eq $tab -and $_.Name -eq $name } | Select-Object -First 1) }
+function Add-CustomButtonDef([string]$tab,[string]$name,[string]$keys,[string]$hex,[string]$mode){ if([string]::IsNullOrWhiteSpace($tab) -or [string]::IsNullOrWhiteSpace($name) -or [string]::IsNullOrWhiteSpace($keys)){ return $false }
+  if([string]::IsNullOrWhiteSpace($hex)){$hex='#566573'}; if([string]::IsNullOrWhiteSpace($mode)){$mode='auto'}
+  $script:CustomButtons += [pscustomobject]@{ Tab=$tab.Trim(); Name=$name.Trim(); Keys=$keys; Color=$hex; Mode=$mode } ; Save-CustomButtons }
+function Get-TabByName([System.Windows.Forms.TabControl]$tabs,[string]$name){ foreach($tp in $tabs.TabPages){ if($tp.Text -eq $name){ return $tp } } $null }
+
+# --- Custom section layout ---
+$script:GridCols=3; $script:GridBtnW=100; $script:GridBtnH=40; $script:GridGap=10; $script:GridStartX=12; $script:GridPadY=12
+function Position-CustomSection([System.Windows.Forms.TabPage]$tp){ $lbl=$tp.Controls | Where-Object { $_ -is [System.Windows.Forms.Label] -and $_.Name -eq 'CustomSectionLabel' } | Select-Object -First 1
+  $panel=$tp.Controls | Where-Object { $_ -is [System.Windows.Forms.FlowLayoutPanel] -and $_.Name -eq 'CustomGridPanel' } | Select-Object -First 1
+  if(-not $lbl -or -not $panel){ return }
+  $max=10; foreach($c in $tp.Controls){ if($c -eq $lbl -or $c -eq $panel){continue}; if($c.Visible -and $c.Bottom -gt $max){$max=$c.Bottom} }
+  $startY=$max + $script:GridPadY; $lbl.Location=[System.Drawing.Point]::new($script:GridStartX,$startY); $panel.Location=[System.Drawing.Point]::new($script:GridStartX,$startY + $lbl.Height + 6) }
+function Get-OrCreate-CustomSection([System.Windows.Forms.TabPage]$tp){ $lbl=$tp.Controls | Where-Object { $_ -is [System.Windows.Forms.Label] -and $_.Name -eq 'CustomSectionLabel' } | Select-Object -First 1
+  $panel=$tp.Controls | Where-Object { $_ -is [System.Windows.Forms.FlowLayoutPanel] -and $_.Name -eq 'CustomGridPanel' } | Select-Object -First 1
+  if(-not $lbl){ $lbl=New-Object System.Windows.Forms.Label; $lbl.Name='CustomSectionLabel'; $lbl.Text='Custom Buttons'; $lbl.AutoSize=$true; $lbl.ForeColor=[System.Drawing.Color]::White; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',9,[System.Drawing.FontStyle]::Bold); $tp.Controls.Add($lbl) }
+  if(-not $panel){ $panel=New-Object System.Windows.Forms.FlowLayoutPanel; $panel.Name='CustomGridPanel'; $panel.FlowDirection='LeftToRight'; $panel.WrapContents=$true; $panel.AutoSize=$true; $panel.AutoSizeMode=[System.Windows.Forms.AutoSizeMode]::GrowAndShrink; $panel.Margin=[System.Windows.Forms.Padding]::new(0); $panel.Padding=[System.Windows.Forms.Padding]::new(0); $panelWidth = ($script:GridCols * $script:GridBtnW) + (($script:GridCols - 1) * $script:GridGap); $panel.MinimumSize=[System.Drawing.Size]::new($panelWidth,0); $panel.MaximumSize=[System.Drawing.Size]::new($panelWidth,0); $tp.Controls.Add($panel) }
+  Position-CustomSection $tp; $panel }
+function Clear-CustomGrid([System.Windows.Forms.TabPage]$tp){ $panel=$tp.Controls | Where-Object { $_ -is [System.Windows.Forms.FlowLayoutPanel] -and $_.Name -eq 'CustomGridPanel' } | Select-Object -First 1; if(-not $panel){ return }
+  $toRemove=@($panel.Controls | Where-Object { $_ -is [System.Windows.Forms.Button] -and $_.Tag -and $_.Tag.Kind -eq 'custombtn' }); foreach($b in $toRemove){ $panel.Controls.Remove($b); $b.Dispose() } }
+function Render-CustomButtons([System.Windows.Forms.TabControl]$tabs){ foreach($tp in $tabs.TabPages){ Clear-CustomGrid $tp }
+  foreach($def in $script:CustomButtons){ if($def.Tab -in @('ICD','CPT','INDEX II')){ continue }
+    $tp=Get-TabByName $tabs $def.Tab; if(-not $tp){ continue }
+    $panel=Get-OrCreate-CustomSection $tp
+    $hex = if($def.PSObject.Properties.Name -contains 'Color' -and $def.Color){ $def.Color } else { '#566573' }
+    $mode= if($def.PSObject.Properties.Name -contains 'Mode' -and $def.Mode ){ [string]$def.Mode } else { 'auto' }
+    $btn=New-Object System.Windows.Forms.Button; $btn.Text=$def.Name; $btn.Size=[System.Drawing.Size]::new($script:GridBtnW,$script:GridBtnH); $btn.Margin=[System.Windows.Forms.Padding]::new(0,0,$script:GridGap,$script:GridGap)
+    try{$btn.BackColor=[System.Drawing.ColorTranslator]::FromHtml($hex)}catch{$btn.BackColor=[System.Drawing.ColorTranslator]::FromHtml('#566573')}
+    $btn.ForeColor=[System.Drawing.Color]::White; $btn.FlatStyle='Flat'; $btn.FlatAppearance.BorderSize=0; $btn.Font=New-Object System.Drawing.Font('Segoe UI',11,[System.Drawing.FontStyle]::Bold)
+    $btn.Tag=[pscustomobject]@{ Kind='custombtn'; Payload=$def.Keys; Mode=$mode }
+    $btn.Add_Click({ param($s,$e) Invoke-CustomAction -payload $s.Tag.Payload -mode $s.Tag.Mode })
+    $panel.Controls.Add($btn); Position-CustomSection $tp } }
+
+# --- Main Form ---
+$script:form=New-Object System.Windows.Forms.Form
+$script:form.Text='CMR Mini Dashboard'
+$script:form.ClientSize=[System.Drawing.Size]::new(460,520)
+$script:form.StartPosition='CenterScreen'
+$script:form.BackColor=[System.Drawing.Color]::FromArgb(30,30,30)
+$script:form.AutoScaleMode=[System.Windows.Forms.AutoScaleMode]::None
+$script:form.TopMost=$true; $script:form.KeyPreview=$true
+$script:form.Add_KeyDown({ if($_.KeyCode -eq 'Escape'){ $script:form.Close() } })
+
+# --- Window size policy: allow growth, prevent shrink below base ---
+$script:form.FormBorderStyle = 'Sizable'
+$script:form.MaximizeBox   = $true
+$script:form.MinimizeBox   = $true
+
+# Base (minimum) size equals initialized window size
+$script:BaseSize = $script:form.Size
+$script:form.MinimumSize = $script:BaseSize
+$script:form.MaximumSize = [System.Drawing.Size]::Empty   # no upper bound
+
+# Helper: keep window fully visible on its current screen
+function Clamp-FormToScreen([System.Windows.Forms.Form]$f,[System.Windows.Forms.Screen]$scr){
+    try{
+        $wa = $scr.WorkingArea
+        $x = [Math]::Min([Math]::Max($f.Left, $wa.X), $wa.Right - $f.Width)
+        $y = [Math]::Min([Math]::Max($f.Top,  $wa.Y), $wa.Bottom - $f.Height)
+        $f.Location = [System.Drawing.Point]::new([int]$x,[int]$y)
+    }catch{}
+}
+
+# Track current screen and scale proportionally when crossing to a different monitor
+$script:CurrentScreen = [System.Windows.Forms.Screen]::FromControl($script:form)
+$script:form.Add_Move({
+    try{
+        $scr = [System.Windows.Forms.Screen]::FromControl($script:form)
+        if($script:CurrentScreen -and $scr.DeviceName -ne $script:CurrentScreen.DeviceName){
+            $old = $script:CurrentScreen.WorkingArea
+            $new = $scr.WorkingArea
+            if($old.Width -gt 0 -and $old.Height -gt 0){
+                $scaleX = [double]$new.Width / [double]$old.Width
+                $scaleY = [double]$new.Height / [double]$old.Height
+                $nw = [int][Math]::Max($script:form.MinimumSize.Width,  [Math]::Round($script:form.Width  * $scaleX))
+                $nh = [int][Math]::Max($script:form.MinimumSize.Height, [Math]::Round($script:form.Height * $scaleY))
+                # Allow temporary unlock to apply size
+                $script:form.MinimumSize = [System.Drawing.Size]::Empty
+                $script:form.MaximumSize = [System.Drawing.Size]::Empty
+                $script:form.Size = [System.Drawing.Size]::new($nw,$nh)
+                $script:form.MinimumSize = $script:BaseSize
+                $script:form.MaximumSize = [System.Drawing.Size]::Empty
+            }
+            $script:CurrentScreen = $scr
+            Clamp-FormToScreen $script:form $scr
+        }
+        else{
+            # Same screen move: just ensure in-bounds
+            Clamp-FormToScreen $script:form $scr
+        }
+    }catch{}
+})
+
+# Guardian: if anything ever reduces the window below the base, snap back
+$script:form.Add_SizeChanged({
+    try{
+        if($script:form.Width -lt $script:BaseSize.Width -or $script:form.Height -lt $script:BaseSize.Height){
+            $script:form.MinimumSize = [System.Drawing.Size]::Empty
+            $script:form.MaximumSize = [System.Drawing.Size]::Empty
+            $script:form.Size = $script:BaseSize
+            $script:form.MinimumSize = $script:BaseSize
+            $script:form.MaximumSize = [System.Drawing.Size]::Empty
+        }
+    }catch{}
+})
+
+
+# Startup run mode
+function Show-RunModeDialog([System.Windows.Forms.IWin32Window]$owner){ $f=New-Object System.Windows.Forms.Form; $f.Text='CMR Mini Dashboard'; $f.StartPosition='CenterScreen'; $f.FormBorderStyle='FixedDialog'
+  $f.Size=[System.Drawing.Size]::new(360,175); $f.MinimizeBox=$false; $f.MaximizeBox=$false; $f.TopMost=$true; $f.ShowInTaskbar=$false; $f.BackColor=[System.Drawing.Color]::FromArgb(30,30,30)
+  $lbl=New-Object System.Windows.Forms.Label; $lbl.Text='Select dashboard mode:'; $lbl.AutoSize=$true; $lbl.Location=[System.Drawing.Point]::new(12,15); $lbl.ForeColor=[System.Drawing.Color]::White; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',10,[System.Drawing.FontStyle]::Bold)
+  $cb=New-Object System.Windows.Forms.ComboBox; $cb.DropDownStyle='DropDownList'; $cb.Location=[System.Drawing.Point]::new(12,45); $cb.Size=[System.Drawing.Size]::new(320,24); [void]$cb.Items.Add('MiniDash Light'); [void]$cb.Items.Add('MiniDash Full'); $cb.SelectedIndex=1
+  $ok=New-Object System.Windows.Forms.Button; $ok.Text='OK'; $ok.Location=[System.Drawing.Point]::new(182,90); $ok.Size=[System.Drawing.Size]::new(70,30)
+  $ok.FlatStyle='Flat'; $ok.UseVisualStyleBackColor=$false; $ok.BackColor=[System.Drawing.Color]::FromArgb(46,134,193); $ok.ForeColor=[System.Drawing.Color]::White; $ok.FlatAppearance.BorderSize=0
+  $cancel=New-Object System.Windows.Forms.Button; $cancel.Text='Close'; $cancel.Location=[System.Drawing.Point]::new(262,90); $cancel.Size=[System.Drawing.Size]::new(70,30)
+  $cancel.FlatStyle='Flat'; $cancel.UseVisualStyleBackColor=$false; $cancel.BackColor=[System.Drawing.Color]::FromArgb(192,57,43); $cancel.ForeColor=[System.Drawing.Color]::White; $cancel.FlatAppearance.BorderSize=0
+  $f.AcceptButton=$ok; $f.CancelButton=$cancel; $ok.Add_Click({$f.DialogResult='OK';$f.Close()}); $cancel.Add_Click({$f.DialogResult='Cancel';$f.Close()})
+  $f.Controls.AddRange(@($lbl,$cb,$ok,$cancel)); $dr= if($owner){ $f.ShowDialog($owner) } else { $f.ShowDialog() }
+  if($dr -ne 'OK'){ return $null } ; if([string]$cb.SelectedItem -match 'Light'){ 'Light' } else { 'Full' } }
+
+try { $null=$script:form.Handle; $script:RunMode=Show-RunModeDialog -owner $script:form; if($null -eq $script:RunMode){ $script:form.Close(); exit } } catch { try{ [System.Windows.Forms.MessageBox]::Show('Run mode dialog failed: ' + $_.Exception.Message,'CMR Mini Dashboard','OK','Error')|Out-Null }catch{}; $script:form.Close(); exit }
+
+# Keep lastHwnd current
+$timer=New-Object System.Windows.Forms.Timer; $timer.Interval=250; $timer.Add_Tick({ try{ $fg=[Win32]::GetForegroundWindow(); if($fg -ne [IntPtr]::Zero -and $fg -ne $script:form.Handle){ $script:lastHwnd=$fg } }catch{} }); $timer.Start()
+
+# --- Tabs ---
+$tabs=New-Object System.Windows.Forms.TabControl; $tabs.Dock='Fill'; $tabs.Font=New-Object System.Drawing.Font('Segoe UI',9)
+$tabNP =New-Object System.Windows.Forms.TabPage; $tabNP.Text='INDEX II'; $tabNP.BackColor=$script:form.BackColor; $tabNP.AutoScroll=$true; $null=$tabs.TabPages.Add($tabNP)
+$tabICD=New-Object System.Windows.Forms.TabPage; $tabICD.Text='ICD'; $tabICD.BackColor=$script:form.BackColor; $tabICD.AutoScroll=$true; $null=$tabs.TabPages.Add($tabICD)
+$tabCPT=New-Object System.Windows.Forms.TabPage; $tabCPT.Text='CPT'; $tabCPT.BackColor=$script:form.BackColor; $tabCPT.AutoScroll=$true; $null=$tabs.TabPages.Add($tabCPT)
+if($script:RunMode -eq 'Full'){ $tabUtility=New-Object System.Windows.Forms.TabPage; $tabUtility.Text='Utility'; $tabUtility.BackColor=$script:form.BackColor; $null=$tabs.TabPages.Add($tabUtility) }
+$script:form.Controls.Add($tabs)
+# === Restore custom tabs: Sandbox, TBD, A227852 ===
+$desiredTabs = @('Sandbox','TBD','A227852')
+foreach($n in $desiredTabs){
+    $tp = Get-TabByName $tabs $n
+    if(-not $tp){
+        $tp=New-Object System.Windows.Forms.TabPage; $tp.Text=$n; $tp.BackColor=$script:form.BackColor; $tp.AutoScroll=$true; $null=$tabs.TabPages.Add($tp)
+    }
+}
+# Add pinned bar + V2T + footer to restored tabs for a consistent experience
+foreach($n in $desiredTabs){ $tp=Get-TabByName $tabs $n; if($tp){ try{ Ensure-BottomBar $tp | Out-Null }catch{}; try{ Ensure-V2T $tp | Out-Null }catch{}; try{ Ensure-Footer $tp | Out-Null }catch{} } }
+# Persist these custom tabs so they remain available next launch
+try{ foreach($n in $desiredTabs){ if($script:CustomTabNames -notcontains $n){ $script:CustomTabNames += $n } }; Save-CustomTabs | Out-Null }catch{}
+
+
+# --- A227852 script info ---
+$tabInfo = Get-TabByName $tabs 'A227852'
+if(-not $tabInfo){ $tabInfo=New-Object System.Windows.Forms.TabPage; $tabInfo.Text='A227852'; $tabInfo.BackColor=$script:form.BackColor; $tabInfo.AutoScroll=$true; $null=$tabs.TabPages.Add($tabInfo) }
+$tb = $tabInfo.Controls | Where-Object { $_ -is [System.Windows.Forms.TextBox] -and $_.Name -eq 'InfoStatic' } | Select-Object -First 1
+if(-not $tb){ $tb=New-Object System.Windows.Forms.TextBox; $tb.Name='InfoStatic'; $tb.Multiline=$true; $tb.ReadOnly=$true; $tb.ScrollBars='Vertical'; $tb.BorderStyle='None'; $tb.BackColor=$script:form.BackColor; $tb.ForeColor=[System.Drawing.Color]::White; $tb.Dock='Fill'; $tabInfo.Controls.Add($tb) }
+# Set fixed header info on A227852
+try{
+  $eol = [Environment]::NewLine
+  $lines = @(
+    '# Feature-complete)'
+    '# NOTE: Created by JRad TPXA227852'
+    '# Date: 2026-02-02'
+    '# Version: v2026.02.06-12 (Hotfix)'
+    ''
+    '# The CMR MiniDashboard was created as a tool that enhances the process of data entry by using an on-screen resource configured for use with Mouse Clicks and Voice-to-Text options.'
+    ''
+    '# The use of pre-defined mouse clicks provides the ability to be more efficient with limited keyboard-to-mouse time by converting multiple keystrokes into a single mouse click, improving accuracy.'
+    ''
+    '# Voice capabilities reduce or remove use of the mouse or keyboard in applicable fields.'
+    ''
+    '#  * Increase Efficiency'
+    '#  * Increase Accuracy'
+    '#  * Increase Profitability'
+    '#  * Improve Customer Service'
+  )
+  $tb.Text = $lines -join $eol
+}catch{}
+
+# ====== Bottom Bar (pinned) ======
+function Ensure-BottomBar([System.Windows.Forms.TabPage]$tp){ if(-not $tp){ return $null }
+  $bar=$tp.Controls | Where-Object { $_ -is [System.Windows.Forms.Panel] -and $_.Name -eq 'BottomBar' } | Select-Object -First 1
+  if(-not $bar){ $bar=New-Object System.Windows.Forms.Panel; $bar.Name='BottomBar'; $bar.Dock='Bottom'; $bar.Height=46; $bar.BackColor=[System.Drawing.Color]::FromArgb(38,38,38); $tp.Controls.Add($bar); $bar.BringToFront() }
+  return $bar }
+function Ensure-Footer([System.Windows.Forms.TabPage]$tp){ $bar=Ensure-BottomBar $tp; if(-not $bar){ return $null } $lbl=$bar.Controls | Where-Object { $_ -is [System.Windows.Forms.Label] -and $_.Name -eq 'FooterLabel' } | Select-Object -First 1
+  if(-not $lbl){ $lbl=New-Object System.Windows.Forms.Label; $lbl.Name='FooterLabel'; $lbl.AutoSize=$true; $lbl.ForeColor=[System.Drawing.Color]::White; $lbl.BackColor=[System.Drawing.Color]::Transparent; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',8); $bar.Controls.Add($lbl) }
+  $scriptName='CMRMiniDashboard.ps1'; try{ if($PSCommandPath){ $scriptName=Split-Path -Leaf $PSCommandPath } }catch{}
+  $revStamp=(Get-Date); try{ if($PSCommandPath){ $revStamp=(Get-Item -LiteralPath $PSCommandPath).LastWriteTime } }catch{}
+  $lbl.Text = "File: $scriptName  Last rev: $($revStamp.ToString('yyyy-MM-dd HH:mm:ss'))"
+  try{ $lbl.Location=[System.Drawing.Point]::new([Math]::Max(5, $bar.ClientSize.Width - $lbl.PreferredWidth - 8), [Math]::Max(0, ($bar.ClientSize.Height - $lbl.PreferredHeight)/2 )); $bar.Add_Resize({ param($s,$e) try{ $lbl.Location=[System.Drawing.Point]::new([Math]::Max(5, $s.ClientSize.Width - $lbl.PreferredWidth - 8), [Math]::Max(0, ($s.ClientSize.Height - $lbl.PreferredHeight)/2 )) }catch{} }) }catch{}
+  return $lbl }
+function Ensure-V2T([System.Windows.Forms.TabPage]$tp){ $bar=Ensure-BottomBar $tp; if(-not $bar){ return $null } $btn=$bar.Controls | Where-Object { $_ -is [System.Windows.Forms.Button] -and $_.Name -eq 'V2TButton' } | Select-Object -First 1
+  if(-not $btn){ $btn=New-Object System.Windows.Forms.Button; $btn.Name='V2TButton'; $btn.Text='V2T'; $btn.Size=[System.Drawing.Size]::new(92,34); try{ $btn.BackColor=[System.Drawing.ColorTranslator]::FromHtml('#2E86C1') }catch{ $btn.BackColor=[System.Drawing.Color]::FromArgb(46,134,193) } ; $btn.ForeColor=[System.Drawing.Color]::White; $btn.FlatStyle='Flat'; $btn.FlatAppearance.BorderSize=0; $btn.UseVisualStyleBackColor=$false; $btn.Font=New-Object System.Drawing.Font('Segoe UI',11,[System.Drawing.FontStyle]::Bold); $bar.Controls.Add($btn); $btn.Location=[System.Drawing.Point]::new(6,[Math]::Max(0, ($bar.ClientSize.Height - $btn.Height)/2 )); $bar.Add_Resize({ param($s,$e) try{ $btn.Location=[System.Drawing.Point]::new(6,[Math]::Max(0, ($s.ClientSize.Height - $btn.Height)/2 )) }catch{} }); $btn.Add_Click({ Start-V2T-Guided }) }
+  return $btn }
+
+# Guided V2T prompt (system colors to avoid black boxes)
+
+function Start-V2T-Guided {
+    try {
+        # Compute dialog size as 1/3 of the tool's current client size (with sensible minimums)
+        $toolClient = $script:form.ClientSize
+        $dlgW = [int][Math]::Max(320, [Math]::Round($toolClient.Width / 3.0))
+        $dlgH = [int][Math]::Max(160, [Math]::Round($toolClient.Height / 3.0))
+
+        # Place dialog on same monitor as the tool, centered over the tool and clamped to working area
+        $toolScreen = [System.Windows.Forms.Screen]::FromControl($script:form)
+        $f = New-Object System.Windows.Forms.Form
+        $f.Text='Voice to Text'
+        $f.FormBorderStyle='FixedDialog'
+        $f.MinimizeBox=$false; $f.MaximizeBox=$false
+        $f.TopMost=$true
+        $f.BackColor=[System.Drawing.SystemColors]::Window
+        $f.AutoScaleMode=[System.Windows.Forms.AutoScaleMode]::None
+        $f.ClientSize=[System.Drawing.Size]::new($dlgW, $dlgH)
+        $f.MinimumSize = [System.Drawing.Size]::new($f.Width, $f.Height)
+        $f.MaximumSize = $f.MinimumSize
+        try{ $f.GetType().GetProperty('DoubleBuffered',[System.Reflection.BindingFlags]'NonPublic,Instance').SetValue($f,$true,$null) }catch{}
+
+        $wa = $toolScreen.WorkingArea
+        $cx = $script:form.Left + [Math]::Max(0, ($script:form.Width - $f.Width) / 2)
+        $cy = $script:form.Top  + [Math]::Max(0, ($script:form.Height - $f.Height) / 2)
+        $x = [Math]::Min([Math]::Max($cx, $wa.X), $wa.Right  - $f.Width)
+        $y = [Math]::Min([Math]::Max($cy, $wa.Y), $wa.Bottom - $f.Height)
+        $f.StartPosition='Manual'
+        $f.Location = [System.Drawing.Point]::new([int]$x,[int]$y)
+
+        # Wrapped instructional text
+        $lbl = New-Object System.Windows.Forms.Label
+        $lbl.Text='Select (click) the exact field where you want to dictate, then click Start. The microphone (Win+H) will appear on this same screen near the text caret.'
+        $lbl.AutoSize=$true
+        $lbl.MaximumSize = [System.Drawing.Size]::new($f.ClientSize.Width - 24, 0)  # wrap to dialog width
+        $lbl.Location=[System.Drawing.Point]::new(12,12)
+        $lbl.ForeColor=[System.Drawing.SystemColors]::WindowText
+        $lbl.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+
+        $start = New-Object System.Windows.Forms.Button
+        $start.Text='Start'
+        $start.Size=[System.Drawing.Size]::new(100,36)
+        $start.Location=[System.Drawing.Point]::new($f.ClientSize.Width - 212, $f.ClientSize.Height - 44)
+        $start.Anchor='Bottom,Right'
+        $start.FlatStyle='Flat'; $start.FlatAppearance.BorderSize=0
+        try{ $start.BackColor=[System.Drawing.ColorTranslator]::FromHtml('#27AE60') }catch{}
+        $start.ForeColor=[System.Drawing.Color]::White
+        $start.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
+
+        $cancel = New-Object System.Windows.Forms.Button
+        $cancel.Text='Cancel'
+        $cancel.Size=[System.Drawing.Size]::new(100,36)
+        $cancel.Location=[System.Drawing.Point]::new($f.ClientSize.Width - 106, $f.ClientSize.Height - 44)
+        $cancel.Anchor='Bottom,Right'
+        $cancel.FlatStyle='Flat'; $cancel.FlatAppearance.BorderSize=0
+        try{ $cancel.BackColor=[System.Drawing.ColorTranslator]::FromHtml('#7F8C8D') }catch{}
+        $cancel.ForeColor=[System.Drawing.Color]::White
+        $cancel.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
+
+        $f.AcceptButton=$start
+        $f.CancelButton=$cancel
+
+        $start.Add_Click({ $f.DialogResult='OK'; $f.Close() })
+        $cancel.Add_Click({ $f.DialogResult='Cancel'; $f.Close() })
+
+        $f.Controls.AddRange(@($lbl,$start,$cancel))
+        $dr = $f.ShowDialog($script:form)
+        if($dr -ne 'OK'){ return }
+
+        # Keep the tool visible: drop TopMost very briefly just to start dictation, then restore
+        $restoreTopMost = $false
+        try{ if($script:form.TopMost){ $restoreTopMost = $true } }catch{}
+        try{ $script:form.TopMost=$false }catch{}
+        Start-Sleep -Milliseconds 150
+        Focus-LastWindow | Out-Null
+        Start-Sleep -Milliseconds 120
+        Invoke-WinH
+        # Restore TopMost quickly (~0.8s total off) so the tool does NOT disappear for 5 seconds
+        Start-Sleep -Milliseconds 550
+        try{ if($restoreTopMost){ $script:form.TopMost=$true } }catch{}
+    } catch {}
+}
+
+# Create pinned bottom bars on main tabs
+foreach($n in @('INDEX II','ICD','CPT','Sandbox','TBD','A227852')){ $tp=($tabs.TabPages | Where-Object { $_.Text -eq $n }); if($tp){ Ensure-BottomBar $tp | Out-Null; Ensure-V2T $tp | Out-Null; Ensure-Footer $tp | Out-Null } }
+
+# ---------- ICD/CPT grids ----------
+$script:TabSwatch = @{ 'ICD' = '#1F618D'; 'CPT' = '#27AE60'; 'NP' = '#2C3E50' }
+function Get-BaseButtons_ICD { @( 'M54.12','M54.2','M54.30','M54.5','M54.6','M62.830','M99.01','M99.02','M99.03','M99.04','M99.05','S19.9XXA') | ForEach-Object { [pscustomobject]@{ Name=$_; Kind='builtin'; Payload=$_; Enter=$true } } }
+function Get-BaseButtons_CPT { $base=@('90471','99202','99213','99214','99396','99417','99421','99483','99491','G2211'); $objs=@(); foreach($c in $base){ $objs += [pscustomobject]@{ Name=$c; Kind='builtin'; Payload=$c; Enter=$true } }; $objs += [pscustomobject]@{ Name='AB'; Kind='builtin'; Payload='A,B'; Enter=$true }; $objs += [pscustomobject]@{ Name='ABCD'; Kind='builtin'; Payload='A,B,C,D'; Enter=$true }; $objs += [pscustomobject]@{ Name='XX'; Kind='builtin'; Payload='XX'; Enter=$true }; $objs }
+function Get-CustomButtonsForTab([string]$tabName){ @($script:CustomButtons | Where-Object { $_.Tab -eq $tabName } | ForEach-Object { $m = if($_.PSObject.Properties.Name -contains 'Mode' -and $_.Mode){ [string]$_.Mode } else { 'auto' }; [pscustomobject]@{ Name=$_.Name; Kind='custom'; Payload=$_.Keys; Mode=$m; Color=$_.Color } }) }
+function Sort-ButtonsForTab([string]$tabName,[object[]]$defs){ if($tabName -eq 'ICD'){ return @($defs | Sort-Object -Property Name) } if($tabName -eq 'CPT'){ return @($defs | Sort-Object -Property @{Expression={ if($_.Name -match '^\d+$'){ [int]$_.Name } else { [int]::MaxValue } }}, @{Expression={ $_.Name }}) } $defs }
+function Clear-CodeButtons([System.Windows.Forms.TabPage]$tp,[string]$tabName){ $toRemove=@($tp.Controls | Where-Object { $_ -is [System.Windows.Forms.Button] -and $_.Tag -and $_.Tag.Kind -eq 'codebtn' -and $_.Tag.Tab -eq $tabName }); foreach($b in $toRemove){ try{ $tp.Controls.Remove($b); $b.Dispose() }catch{} } }
+function Build-CodeButtons([System.Windows.Forms.TabPage]$tp,[string]$tabName,[object[]]$defs,[int]$startY=60){ $btnW=100; $btnH=40; $cols=4; $startX=12; $gap=10; $color = if($script:TabSwatch.ContainsKey($tabName)) { $script:TabSwatch[$tabName] } else { '#566573' }; $visibleIndex=0
+  foreach($d in $defs){ if(Is-Hidden $tabName $d.Name){ continue }; $x=$startX + ($visibleIndex % $cols) * ($btnW + $gap); $y=$startY + [math]::Floor($visibleIndex / $cols) * ($btnH + $gap)
+    $b=New-Object System.Windows.Forms.Button; $b.Text=$d.Name; $b.Size=[System.Drawing.Size]::new($btnW,$btnH); $b.Location=[System.Drawing.Point]::new($x,$y)
+    try{ $b.BackColor=[System.Drawing.ColorTranslator]::FromHtml($color) }catch{ $b.BackColor=[System.Drawing.ColorTranslator]::FromHtml('#566573') }
+    $b.ForeColor=[System.Drawing.Color]::White; $b.FlatStyle='Flat'; $b.FlatAppearance.BorderSize=0; $b.Font=New-Object System.Drawing.Font('Segoe UI',10,[System.Drawing.FontStyle]::Bold)
+
+$b.AutoSize = $false
+$b.UseCompatibleTextRendering = $false
+# $b.AutoEllipsis = $false   # Button supports AutoEllipsis; leave off if you prefer "…" on overflo
+
+    $b.Tag=[pscustomobject]@{ Kind='codebtn'; Tab=$tabName; SubKind=$d.Kind; Payload=$d.Payload; Mode=$d.Mode }
+    if($d.Kind -eq 'custom'){ $b.Add_Click({ param($s,$e) Invoke-CustomAction -payload $s.Tag.Payload -mode $s.Tag.Mode; }) }
+    else { $b.Add_Click({ param($s,$e) TypeText-ToLastWindow $s.Tag.Payload $true $false;}) } 
+
+    $tp.Controls.Add($b); $visibleIndex++ }
+  $rows = if($visibleIndex -le 0){ 0 } else { [math]::Ceiling($visibleIndex / $cols) }
+  $bottomY = if($rows -le 0){ $startY } else { $startY + ($rows * ($btnH + $gap)) - $gap + $btnH } ; return $bottomY }
+function Rebuild-TabButtons([string]$tabName){ $tp = if($tabName -eq 'ICD'){ $tabICD } elseif($tabName -eq 'CPT'){ $tabCPT } else { $null }; if(-not $tp){ return 0 }
+  Clear-CodeButtons $tp $tabName; $base = if($tabName -eq 'ICD'){ Get-BaseButtons_ICD } elseif($tabName -eq 'CPT'){ Get-BaseButtons_CPT } else { @() }
+  $custom = Get-CustomButtonsForTab $tabName; $all = @($base + $custom); $all = @($all | Where-Object { -not (Is-Hidden $tabName $_.Name) }); $sorted = Sort-ButtonsForTab $tabName $all; Build-CodeButtons $tp $tabName $sorted 60 }
+
+# Close buttons (top-right)
+$tabICD.Controls.Add((New-Button 'X' 410 5 40 30 '#C0392B' 12 { $script:form.Close() }))
+$tabCPT.Controls.Add((New-Button 'X' 410 5 40 30 '#C0392B' 12 { $script:form.Close() }))
+
+# Build ICD/CPT and compute bottoms
+$script:ICDBottomY = Rebuild-TabButtons 'ICD'
+$script:CPTBottomY = Rebuild-TabButtons 'CPT'
+
+# ---------- Tally on INDEX II and ICD ----------
+$script:Tally = Load-Tally; $script:TallyLabels = New-Object System.Collections.ArrayList
+function Update-TallyLabels { foreach($lbl in $script:TallyLabels){ try{ $lbl.Text = "Tally: $($script:Tally)" } catch {} } }
+function Add-TallyControlsToTab([System.Windows.Forms.TabPage]$tp,[int]$fontSize=18){ $tallyLbl=New-Object System.Windows.Forms.Label; $tallyLbl.Name='TallyLabel'; $tallyLbl.AutoSize=$true; $tallyLbl.ForeColor=[System.Drawing.Color]::White; $tallyLbl.BackColor=[System.Drawing.Color]::Transparent; $tallyLbl.Font=New-Object System.Drawing.Font('Segoe UI',$fontSize,[System.Drawing.FontStyle]::Bold); $tallyLbl.Location=[System.Drawing.Point]::new(12,10); $tp.Controls.Add($tallyLbl); [void]$script:TallyLabels.Add($tallyLbl)
+  $bPlus = New-Button '+' 300 10 45 38 '#27AE60' 16 { $script:Tally++; Update-TallyLabels; Save-Tally }
+  $bMinus= New-Button '-' 350 10 45 38 '#D35400' 16 { $script:Tally=[Math]::Max(0,[int]$script:Tally-1); Update-TallyLabels; Save-Tally }
+  $bReset= New-Button 'Reset' 400 10 50 38 '#C0392B' 12 { $script:Tally=0; Update-TallyLabels; Save-Tally }
+  foreach($b in @($bPlus,$bMinus,$bReset)){ $b.Tag=[pscustomobject]@{ Kind='npctrl' }; $tp.Controls.Add($b) } }
+
+# Add tally to INDEX II and ICD
+
+
+
+# ---------- Numeric keypads ----------
+function Add-NPKeypadToTab([System.Windows.Forms.TabPage]$tp,[int]$startY){ $npStartX=40; $npStartY=$startY; $npBtnW=90; $npBtnH=55; $npGapX=12; $npGapY=12; $npColor='#2C3E50'
+  $addBtn = { param([string]$label,[int]$row,[int]$col,[scriptblock]$onClick) $x=$npStartX+$col*($npBtnW+$npGapX); $y=$npStartY+$row*($npBtnH+$npGapY); $b=New-Button $label $x $y $npBtnW $npBtnH $npColor 16 $onClick; $b.Tag=[pscustomobject]@{ Kind='npbtn' }; $tp.Controls.Add($b) }
+  '7,8,9,4,5,6,1,2,3' -split ',' | ForEach-Object -Begin { $i=0 } -Process { $r=[math]::Floor($i/3); $c=$i%3; $d=$_; & $addBtn $d $r $c { param($s,$e) TypeText-ToLastWindow $s.Text $false $true }; $i++ }
+  & $addBtn 'Backspace' 3 0 { SendKeys-ToLastWindow '{BACKSPACE}' $true }
+  & $addBtn '0' 3 1 { TypeText-ToLastWindow '0' $false $true }
+  & $addBtn 'Return' 3 2 { SendKeys-ToLastWindow '{ENTER}' $true }
+  & $addBtn ',' 4 0 { TypeText-ToLastWindow ',' $false $true }
+  & $addBtn '.' 4 1 { TypeText-ToLastWindow '.' $false $true }
+  & $addBtn 'Space' 4 2 { TypeText-ToLastWindow ' ' $false $true }
+  & $addBtn 'Tab' 5 0 { SendKeys-ToLastWindow '{TAB}' $true }
+  & $addBtn 'Delete' 5 1 { SendKeys-ToLastWindow '{DELETE}' $true } }
+function Clear-NPKeypadFromTab([System.Windows.Forms.TabPage]$tp){ $toRemove=@($tp.Controls | Where-Object { $_ -is [System.Windows.Forms.Button] -and $_.Tag -and $_.Tag.Kind -eq 'npbtn' }); foreach($b in $toRemove){ try{ $tp.Controls.Remove($b); $b.Dispose() }catch{} } }
+
+# Place keypads
+Add-NPKeypadToTab $tabNP 80
+function Refresh-ICDKeypad { try{ if(-not $tabICD){ return }; Clear-NPKeypadFromTab $tabICD; $kpY=[Math]::Max(80,[int]($script:ICDBottomY + 40)); Add-NPKeypadToTab $tabICD $kpY } catch { Write-Log "Refresh-ICDKeypad failed: $($_.Exception.Message)" } }
+function Refresh-CPTKeypad { try{ if(-not $tabCPT){ return }; Clear-NPKeypadFromTab $tabCPT; $kpY=[Math]::Max(80,[int]($script:CPTBottomY + 40)); Add-NPKeypadToTab $tabCPT $kpY } catch { Write-Log "Refresh-CPTKeypad failed: $($_.Exception.Message)" } }
+Refresh-ICDKeypad; Refresh-CPTKeypad
+
+# ---------- INDEX II extra buttons ----------
+$tabNP.Controls.Add((New-Button 'X' 410 5 40 30 '#C0392B' 12 { $script:form.Close() }))
+
+# --- Helper: Outlook Hard Path ---
+function Open-Outlook-HardPath { $olPath='C:\\Program Files\\Microsoft Office\\root\\Office16\\OUTLOOK.EXE'; if(Test-Path $olPath){ Start-Process $olPath } else { try{ [System.Windows.Forms.MessageBox]::Show("Outlook not found at:`n$olPath","Outlook","OK","Error") }catch{} } }
+
+# --- Duplicate of Index buttons on INDEX II (below keypad) ---
+$dupBtnW=155; $dupBtnH=55; $dupLeftX=10; $dupRightX=175; $dupTopY=500; $dupMidY=$dupTopY+65; $dupLowY=$dupMidY+65
+
+# Helper: add a left/right embedded button pair for a given row index (0-based)
+function Add-EmbeddedPair(
+  [System.Windows.Forms.TabPage]$tp, [int]$rowIndex,
+  [string]$leftText,  [scriptblock]$leftOnClick,
+  [string]$rightText, [scriptblock]$rightOnClick,
+  [string]$leftColor = '#34495E', [string]$rightColor = '#34495E'
+){
+  $y = $dupTopY + ($rowIndex * 65)
+  $tp.Controls.Add((New-Button $leftText  $dupLeftX  $y $dupBtnW $dupBtnH $leftColor 16 $leftOnClick))
+  $tp.Controls.Add((New-Button $rightText $dupRightX $y $dupBtnW $dupBtnH $rightColor 16 $rightOnClick))
+}
+
+# Auto-fit the main form height to show all controls on a tab (up to a max client height)
+function Fit-FormHeight-ToTab([System.Windows.Forms.Form]$form,[System.Windows.Forms.TabPage]$tp,[int]$maxClientH=980){
+  try{
+    $maxBottom = 0
+    foreach($c in $tp.Controls){
+      if(-not $c.Visible){ continue }
+      if($c -is [System.Windows.Forms.Panel] -and $c.Name -eq 'BottomBar'){ continue }
+      if($c.Bottom -gt $maxBottom){ $maxBottom = $c.Bottom }
+    }
+    $needClientH = [int]($maxBottom + 20)
+    $needClientH = [Math]::Min($needClientH, $maxClientH)
+    $delta = $form.Height - $form.ClientSize.Height
+    if($needClientH -gt $form.ClientSize.Height){
+      $form.MinimumSize = [System.Drawing.Size]::Empty
+      $form.MaximumSize = [System.Drawing.Size]::Empty
+      $form.Size = [System.Drawing.Size]::new($form.Width, $needClientH + $delta)
+      $form.MinimumSize = $form.Size
+      $form.MaximumSize = [System.Drawing.Size]::Empty
+    }
+  }catch{}
+}
+
+
+# --- Rebuilt embedded grid using helper rows (no scrolling required for current set) ---
+# Row 0: C / P
+Add-EmbeddedPair $tabNP 0 'C' { SafeCopy-Selection; SendKeys-ToLastWindow '{ENTER}' $true } 'P' { SendKeys-ToLastWindow '^v' $false; Start-Sleep -Milliseconds 60; SendKeys-ToLastWindow '{ENTER}' $true } '#2980B9' '#27AE60'
+# Row 1: PSD / MBill
+Add-EmbeddedPair $tabNP 1 'PSD' { TypeText-ToLastWindow 'PSDasgn' $true $false } 'MBill' { TypeText-ToLastWindow 'Medbill' $true $false } '#8E44AD' '#D35400'
+# Row 2: SNPT / Outlook
+Add-EmbeddedPair $tabNP 2 'SNPT' { try{ Start-Process explorer.exe 'ms-screenclip:' } catch { try{ Start-Process 'snippingtool.exe' '/clip' } catch {} } } 'Outlook' { Open-Outlook-HardPath } '#5DADE2' '#16A085'
+# Row 3: RFax Web / RFax App
+Add-EmbeddedPair $tabNP 3 'RFax Web' { try { Start-Process 'https://rfaxclwebp/RightFax/User/' } catch {} } 'RFax App' { try { Start-Process 'C:\Program Files (x86)\RightFax\Client\fuw32.exe' } catch {} }
+# Row 4: Test1 / Test2 (directly under RFax row)
+Add-EmbeddedPair $tabNP 4 'Test1' { TypeText-ToLastWindow 'TEST1' $true $false } 'Test2' { TypeText-ToLastWindow 'TEST2' $true $false }
+# Row 5: Cor G / Cor R
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 5 'Cor G' { Play-PayloadWithSleep '{TAB}C{SLEEP 600}{TAB}G{SLEEP 300}{TAB}' } 'Cor R' { Play-PayloadWithSleep '{TAB}C{SLEEP 600}{TAB}R{SLEEP 300}{TAB}' }
+# Row 6: PD RQ / PD G
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 6 'PD RQ' { Play-PayloadWithSleep '{TAB}P{SLEEP 600}{TAB}R{SLEEP 300}{TAB}' } 'PD G' { Play-PayloadWithSleep '{TAB}P{SLEEP 600}{TAB}G{SLEEP 300}{TAB}' }
+# Row 7: Inj G / Inj Atty C
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 7 'Inj G' { Play-PayloadWithSleep '{TAB}I{SLEEP 600}{TAB}G{SLEEP 300}{TAB}' } 'Inj Atty C' { Play-PayloadWithSleep '{TAB}I{SLEEP 600}{TAB}A{SLEEP 300}A{SLEEP 300}A{SLEEP 400}{TAB}' }
+# Row 8: Med_MBill / MB2Medbill
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 8 'Med_MBill' { Play-PayloadWithSleep '{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}{TAB}' } 'MB2Medbill' { Play-PayloadWithSleep '{TAB}M{SLEEP 300}{TAB}M{SLEEP 200}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}' }
+# Row 9: MedBill-A / MBA2Medbill
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 9 'MedBill-A' { Play-PayloadWithSleep '{TAB}M{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}' } 'MBA2Medbill' { Play-PayloadWithSleep '{TAB}M{SLEEP 300}{TAB}M{SLEEP 400}M{SLEEP 800}{TAB}MEDBILL{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}' }
+# Auto-fit form height to reveal all the above without scrolling (cap at 980 client px)
+Fit-FormHeight-ToTab $script:form $tabNP 980
+# Row 10: SubroMed / SubroGen
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 10 'SubroMed' { Play-PayloadWithSleep '{TAB}S{SLEEP 600}{TAB}M{SLEEP 200}M{SLEEP 200}{TAB}' } 'SubroGen' { Play-PayloadWithSleep '{TAB}S{SLEEP 300}{TAB}M{SLEEP 400}G{SLEEP 800}{TAB}' }
+# Auto-fit form height to reveal all the above without scrolling (cap at 980 client px)
+Fit-FormHeight-ToTab $script:form $tabNP 980
+# Row 11: SubroDMND / PSD_PSDA
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 11 'SubroDMND' { Play-PayloadWithSleep '{TAB}S{SLEEP 600}{TAB}D{SLEEP 200}M{SLEEP 200}{TAB}' } 'PSD_PSDA' { Play-PayloadWithSleep '{TAB}M{SLEEP 300}{TAB}P{SLEEP 300}P{SLEEP 300}P{SLEEP 300}{TAB}PSDASGN{TAB}{ENTER}{TAB}{TAB}{TAB}{TAB}{TAB}{ENTER}' }
+# Auto-fit form height to reveal all the above without scrolling (cap at 980 client px)
+Fit-FormHeight-ToTab $script:form $tabNP 980
+# Row 12: Med G / TBD
+$CorR = '^{r}'   # EDIT if different
+Add-EmbeddedPair $tabNP 12 'Med G' { Play-PayloadWithSleep '{TAB}M{SLEEP 600}{TAB}G{SLEEP 200}{TAB}' } 'TBD' { Play-PayloadWithSleep '' }
+# Auto-fit form height to reveal all the above without scrolling (cap at 980 client px)
+Fit-FormHeight-ToTab $script:form $tabNP 980
+
+# ---------- Utility (Full) ----------
+if($script:RunMode -eq 'Full'){
+  $tabUtility=($tabs.TabPages | Where-Object { $_.Text -eq 'Utility' })
+  function Get-TabNames([System.Windows.Forms.TabControl]$t){ @($t.TabPages | ForEach-Object { $_.Text }) }
+
+
+  # Add Tab
+  $tabUtility.Controls.Add((New-Button 'Add Tab' 12 40 120 40 '#7D3C98' 12 { try{ $name=Show-InputDialog 'Add Tab' 'New tab name?' ''; if([string]::IsNullOrWhiteSpace($name)){return}; $name=$name.Trim(); if($name.Length -gt 40){$name=$name.Substring(0,40)}; if($script:CustomTabNames -notcontains $name){ $script:CustomTabNames += $name; if(Save-CustomTabs){ [System.Windows.Forms.MessageBox]::Show("Tab '$name' will appear next launch.",'Custom Tabs','OK','Information')|Out-Null } } else { [System.Windows.Forms.MessageBox]::Show("Tab '$name' already exists.",'Custom Tabs','OK','Information')|Out-Null } } catch { Write-Log "Add Tab failed: $($_.Exception.Message)" } }))
+
+  # Add Button
+  $tabUtility.Controls.Add((New-Button 'Add Button' 142 40 120 40 '#B9770E' 12 { try { $targetTabName=Show-SelectDialog 'Select Tab' 'What tab?' (Get-TabNames $tabs); if([string]::IsNullOrWhiteSpace($targetTabName)){ return }; $targetTab = Get-TabByName $tabs $targetTabName; if(-not $targetTab){ return }
+    $btnName=Show-InputDialog 'Add Button' 'New button name?' ''; if([string]::IsNullOrWhiteSpace($btnName)){ return }; $btnName=$btnName.Trim(); if($btnName.Length -gt 24){ $btnName=$btnName.Substring(0,24) }
+    $keys=Show-InputDialog 'Add Button' 'Enter literal text OR SendKeys codes ({ENTER}, ^v, etc.)' ''; if([string]::IsNullOrWhiteSpace($keys)){ return }
+    $mode=Show-ModeDialog 'auto'; if([string]::IsNullOrWhiteSpace($mode)){ return }
+    $hex='#566573'; if($targetTabName -in @('ICD','CPT')){ $hex=$script:TabSwatch[$targetTabName] } else { $hex=Show-ColorPicker $hex }
+    try{ $hid=$script:HiddenButtons | Where-Object { $_.Tab -eq $targetTabName -and $_.Name -eq $btnName } | Select-Object -First 1; if($hid){ $script:HiddenButtons=@($script:HiddenButtons | Where-Object { -not ($_.Tab -eq $targetTabName -and $_.Name -eq $btnName) }); Save-HiddenButtons | Out-Null } } catch {}
+    try{ $existing=$script:CustomButtons | Where-Object { $_.Tab -eq $targetTabName -and $_.Name -eq $btnName } | Select-Object -First 1; if($existing){ $existing.Keys=$keys; $existing.Color=$hex; $existing.Mode=$mode; Save-CustomButtons | Out-Null; if($targetTabName -in @('ICD','CPT')){ $null=Rebuild-TabButtons $targetTabName; if($targetTabName -eq 'CPT'){ try{ Refresh-CPTKeypad }catch{} } else { try{ Refresh-ICDKeypad }catch{} } } else { Render-CustomButtons $tabs }; $script:ChangeCount++; Update-ChangeLabel; [System.Windows.Forms.MessageBox]::Show("Button '$btnName' updated on '$targetTabName'.",'Add Button','OK','Information')|Out-Null; return } } catch {}
+    if(-not (Add-CustomButtonDef $targetTabName $btnName $keys $hex $mode)){ [System.Windows.Forms.MessageBox]::Show('Could not save new button (works this session only).','Add Button','OK','Warning')|Out-Null }
+    if($targetTabName -in @('ICD','CPT')){ $null=Rebuild-TabButtons $targetTabName; if($targetTabName -eq 'CPT'){ try{ Refresh-CPTKeypad }catch{} } else { try{ Refresh-ICDKeypad }catch{} }; [System.Windows.Forms.MessageBox]::Show("Button '$btnName' added to '$targetTabName'.",'Add Button','OK','Information')|Out-Null; $script:ChangeCount++; Update-ChangeLabel; return }
+    $panel=Get-OrCreate-CustomSection $targetTab; $newBtn=New-Object System.Windows.Forms.Button; $newBtn.Text=$btnName; $newBtn.Size=[System.Drawing.Size]::new($script:GridBtnW,$script:GridBtnH); $newBtn.Margin=[System.Windows.Forms.Padding]::new(0,0,$script:GridGap,$script:GridGap)
+    try{ $newBtn.BackColor=[System.Drawing.ColorTranslator]::FromHtml($hex) }catch{ $newBtn.BackColor=[System.Drawing.ColorTranslator]::FromHtml('#566573') } ; $newBtn.ForeColor=[System.Drawing.Color]::White; $newBtn.FlatStyle='Flat'; $newBtn.FlatAppearance.BorderSize=0; $newBtn.Font=New-Object System.Drawing.Font('Segoe UI',11,[System.Drawing.FontStyle]::Bold)
+    $newBtn.Tag=[pscustomobject]@{ Kind='custombtn'; Payload=$keys; Mode=$mode }; $newBtn.Add_Click({ param($s,$e) Invoke-CustomAction -payload $s.Tag.Payload -mode $s.Tag.Mode })
+    $panel.Controls.Add($newBtn); Position-CustomSection $targetTab; [System.Windows.Forms.MessageBox]::Show("Button '$btnName' added to '$targetTabName'.",'Add Button','OK','Information')|Out-Null; $script:ChangeCount++; Update-ChangeLabel } catch { Write-Log "Add Button failed: $($_.Exception.Message)" } }))
+
+  # Edit
+  $tabUtility.Controls.Add((New-Button 'Edit' 142 90 120 40 '#16A085' 12 { try { $targetTabName=Show-SelectDialog 'Select Tab' 'What tab?' (Get-TabNames $tabs); if([string]::IsNullOrWhiteSpace($targetTabName)){ return }
+    $names=@(); try{ $names += @($script:CustomButtons | Where-Object { $_.Tab -eq $targetTabName } | Select-Object -ExpandProperty Name) }catch{}
+    if($targetTabName -eq 'ICD'){ try{ $names += @((Get-BaseButtons_ICD | Select-Object -ExpandProperty Name)) }catch{} }
+    if($targetTabName -eq 'CPT'){ try{ $names += @((Get-BaseButtons_CPT | Select-Object -ExpandProperty Name)) }catch{} }
+    $names=@($names | Sort-Object -Unique); if(-not $names -or $names.Count -eq 0){ [System.Windows.Forms.MessageBox]::Show("No editable buttons found on '$targetTabName'.",'Edit Button','OK','Information')|Out-Null; return }
+    $btnName=Show-SelectDialog 'Edit Button' "Which button on '$targetTabName' do you want to edit?" $names; if([string]::IsNullOrWhiteSpace($btnName)){ return }
+    $keys=Show-InputDialog 'Edit Button' 'Enter new literal text OR SendKeys codes ({ENTER}, ^v, etc.)' ''; if([string]::IsNullOrWhiteSpace($keys)){ return }
+    $mode=Show-ModeDialog 'auto'; if([string]::IsNullOrWhiteSpace($mode)){ return }
+    try{ $hid=$script:HiddenButtons | Where-Object { $_.Tab -eq $targetTabName -and $_.Name -eq $btnName } | Select-Object -First 1; if($hid){ $script:HiddenButtons=@($script:HiddenButtons | Where-Object { -not ($_.Tab -eq $targetTabName -and $_.Name -eq $btnName) }); Save-HiddenButtons | Out-Null } }catch{}
+    $def=$null; try{ $def=$script:CustomButtons | Where-Object { $_.Tab -eq $targetTabName -and $_.Name -eq $btnName } | Select-Object -First 1 }catch{}
+    if($def){ $def.Keys=$keys; $def.Mode=$mode; Save-CustomButtons | Out-Null } else { $hex='#566573'; if($script:TabSwatch -and $script:TabSwatch.ContainsKey($targetTabName)){ $hex=$script:TabSwatch[$targetTabName] }; Add-CustomButtonDef $targetTabName $btnName $keys $hex $mode | Out-Null }
+    if($targetTabName -in @('ICD','CPT')){ $null=Rebuild-TabButtons $targetTabName; if($targetTabName -eq 'CPT'){ try{ Refresh-CPTKeypad }catch{} } else { try{ Refresh-ICDKeypad }catch{} } } else { Render-CustomButtons $tabs }
+    $script:ChangeCount++; Update-ChangeLabel; [System.Windows.Forms.MessageBox]::Show("Button '$btnName' updated on '$targetTabName'.",'Edit Button','OK','Information')|Out-Null } catch { Write-Log "Edit Button failed: $($_.Exception.Message)" } }))
+
+  # SAVE
+  $tabUtility.Controls.Add((New-Button 'SAVE' 272 90 160 40 '#2980B9' 12 { try { try{ Save-CustomTabs | Out-Null }catch{}; try{ Save-CustomButtons | Out-Null }catch{}; try{ Save-HiddenButtons | Out-Null }catch{}; try{ Save-Tally }catch{}; if($PSCommandPath){ try { $raw=Get-Content -LiteralPath $PSCommandPath -Raw; $raw=[regex]::Replace($raw, "(?s)\r?\n# --- MiniDash Session Changes ---.*$", ""); $stamp=(Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); $footer="`r`n# --- MiniDash Session Changes ---`r`n# Last Saved: $stamp`r`n# Changes Made (this session): $($script:ChangeCount)`r`n"; Set-Content -LiteralPath $PSCommandPath -Value ($raw + $footer) -Encoding UTF8 } catch { Write-Log "SAVE footer write failed: $($_.Exception.Message)" } }; [System.Windows.Forms.MessageBox]::Show('Session changes saved.','SAVE','OK','Information') | Out-Null } catch { Write-Log "SAVE failed: $($_.Exception.Message)" } }))
+
+  # Diagnostics
+  $tabUtility.Controls.Add((New-Button 'Diagnostics' 12 240 120 40 '#7F8C8D' 11 { try { $msg = "Persist Dir: $LogDir" + [Environment]::NewLine + "CustomTabsFile: $CustomTabsFile" + [Environment]::NewLine + "CustomButtonsFile: $CustomButtonsFile" + [Environment]::NewLine + "HiddenButtonsFile: $HiddenButtonsFile" + [Environment]::NewLine + "" + [Environment]::NewLine + "Custom Tabs loaded: $($script:CustomTabNames.Count)" + [Environment]::NewLine + "Custom Buttons loaded: $($script:CustomButtons.Count)" + [Environment]::NewLine + "Hidden Buttons loaded: $($script:HiddenButtons.Count)" + [Environment]::NewLine; [System.Windows.Forms.MessageBox]::Show($msg,'Diagnostics','OK','Information') | Out-Null } catch { Write-Log "Diagnostics failed: $($_.Exception.Message)" } }))
+
+  # Restore
+  $tabUtility.Controls.Add((New-Button 'Restore' 142 240 120 40 '#27AE60' 11 { try { $targetTabName=Show-SelectDialog 'Select Tab' 'Which tab to restore from?' (Get-TabNames $tabs); if([string]::IsNullOrWhiteSpace($targetTabName)){ return }
+    $hidden=@($script:HiddenButtons | Where-Object { $_.Tab -eq $targetTabName } | Select-Object -ExpandProperty Name); $hidden=@($hidden | Sort-Object -Unique); if(-not $hidden -or $hidden.Count -eq 0){ [System.Windows.Forms.MessageBox]::Show("No hidden buttons found for '$targetTabName'.",'Restore','OK','Information') | Out-Null; return }
+    $btnName=Show-SelectDialog 'Restore' "Which hidden button on '$targetTabName' should be restored?" $hidden; if([string]::IsNullOrWhiteSpace($btnName)){ return }
+    $script:HiddenButtons=@($script:HiddenButtons | Where-Object { -not ($_.Tab -eq $targetTabName -and $_.Name -eq $btnName) }); Save-HiddenButtons | Out-Null
+    if($targetTabName -in @('ICD','CPT')){ $null=Rebuild-TabButtons $targetTabName; if($targetTabName -eq 'CPT'){ try{ Refresh-CPTKeypad }catch{} } else { try{ Refresh-ICDKeypad }catch{} } } else { Render-CustomButtons $tabs }
+    $script:ChangeCount++; try{ Update-ChangeLabel }catch{}; [System.Windows.Forms.MessageBox]::Show("Restored '$btnName' on '$targetTabName'.",'Restore','OK','Information') | Out-Null } catch { Write-Log "Restore failed: $($_.Exception.Message)" } }))
+
+  # Remove Button
+  function Get-ButtonNamesForTab([System.Windows.Forms.TabPage]$tp){ $names=@(); foreach($ctrl in $tp.Controls){ if($ctrl -is [System.Windows.Forms.Button] -and $ctrl.Text -and $ctrl.Text -ne 'X'){ $names += $ctrl.Text } ; if($ctrl -is [System.Windows.Forms.FlowLayoutPanel] -and $ctrl.Name -eq 'CustomGridPanel'){ foreach($b in $ctrl.Controls){ if($b -is [System.Windows.Forms.Button] -and $b.Text){ $names += $b.Text } } } } ; if($tp.Text -eq 'Utility'){ $names=$names | Where-Object { $_ -notin @('Add Tab','Add Button','Remove Button','Relaunch','Edit','SAVE','Diagnostics','Restore') } } ; $names | Sort-Object -Unique }
+  $tabUtility.Controls.Add((New-Button 'Remove Button' 272 40 160 40 '#C0392B' 12 { try { $targetTabName=Show-SelectDialog 'Select Tab' 'What tab?' (Get-TabNames $tabs); if([string]::IsNullOrWhiteSpace($targetTabName)){return}; $targetTab=Get-TabByName $tabs $targetTabName; if(-not $targetTab){return}
+    $names=Get-ButtonNamesForTab $targetTab; if(-not $names -or $names.Count -eq 0){ [System.Windows.Forms.MessageBox]::Show("No removable buttons found on '$targetTabName'.",'Remove Button','OK','Information') | Out-Null; return }
+    $btnToRemove=Show-SelectDialog 'Remove Button' "Which button on '$targetTabName' should be removed at next launch?" $names; if([string]::IsNullOrWhiteSpace($btnToRemove)){return}
+    $existingCustom=$script:CustomButtons | Where-Object { $_.Tab -eq $targetTabName -and $_.Name -eq $btnToRemove }
+    if($existingCustom){ $script:CustomButtons=$script:CustomButtons | Where-Object { !($_.Tab -eq $targetTabName -and $_.Name -eq $btnToRemove) }; if(Save-CustomButtons){ [System.Windows.Forms.MessageBox]::Show("Custom button '$btnToRemove' will be removed at next launch.",'Remove Button','OK','Information') | Out-Null; $script:ChangeCount++; Update-ChangeLabel } else { [System.Windows.Forms.MessageBox]::Show('Failed to save custom buttons.','Remove Button','OK','Error') | Out-Null } }
+    else { if(-not (Is-Hidden $targetTabName $btnToRemove)){ $script:HiddenButtons += [pscustomobject]@{ Tab=$targetTabName; Name=$btnToRemove }; if(Save-HiddenButtons){ [System.Windows.Forms.MessageBox]::Show("Built-in button '$btnToRemove' will be hidden at next launch.",'Remove Button','OK','Information') | Out-Null; $script:ChangeCount++; Update-ChangeLabel } else { [System.Windows.Forms.MessageBox]::Show('Failed to save hidden buttons.','Remove Button','OK','Error') | Out-Null } } else { [System.Windows.Forms.MessageBox]::Show('That button is already scheduled to be hidden.','Remove Button','OK','Information') | Out-Null } } } catch { Write-Log "Remove Button failed: $($_.Exception.Message)"; try{ [System.Windows.Forms.MessageBox]::Show('Remove Button failed: ' + $_.Exception.Message,'Remove Button','OK','Error') | Out-Null }catch{} } }))
+
+  # Relaunch
+  $tabUtility.Controls.Add((New-Button 'Relaunch' 12 90 120 40 '#2E86C1' 12 { try { if(-not $PSCommandPath){ [System.Windows.Forms.MessageBox]::Show('Cannot determine script path (PSCommandPath empty).','Relaunch','OK','Information') | Out-Null; return }; Start-Process powershell.exe "-STA -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" | Out-Null; $script:form.Close() } catch { try{ [System.Windows.Forms.MessageBox]::Show('Relaunch failed: ' + $_.Exception.Message,'Relaunch','OK','Error') | Out-Null }catch{} } }))
+  $tabUtility.Controls.Add((New-Button 'X' 410 5 40 30 '#C0392B' 12 { $script:form.Close() }))
+
+  # Change label
+  $script:ChangeLabel = New-Object System.Windows.Forms.Label; $script:ChangeLabel.AutoSize=$true; $script:ChangeLabel.ForeColor=[System.Drawing.Color]::White; $script:ChangeLabel.BackColor=[System.Drawing.Color]::Transparent; $script:ChangeLabel.Location=[System.Drawing.Point]::new(12,190); $script:ChangeLabel.Font=New-Object System.Drawing.Font('Segoe UI',9,[System.Drawing.FontStyle]::Bold); $script:ChangeLabel.Text = "Changes this session: $($script:ChangeCount)"; $tabUtility.Controls.Add($script:ChangeLabel)
+  function Update-ChangeLabel { try{ if($script:ChangeLabel){ $script:ChangeLabel.Text = "Changes this session: $($script:ChangeCount)" } }catch{} }
+}
+
+Add-TallyControlsToTab $tabCPT 18
+# Render saved custom buttons
+Render-CustomButtons $tabs
+foreach($tp in $tabs.TabPages){ $tp.Add_Resize({ param($s,$e) Position-CustomSection $s }) }
+$script:form.Add_FormClosed({ try{$timer.Stop();$timer.Dispose()}catch{}; Write-Log 'Dashboard closed.' })
+[void][System.Windows.Forms.Application]::Run($script:form)

@@ -2,146 +2,121 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CMR MiniDash Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; text-align: center; }
-        h1 { margin-bottom: 20px; }
-        .hidden { display: none; }
-        .grid { display: grid; gap: 10px; margin: 20px auto; }
-        .top-grid { grid-template-columns: repeat(4, 1fr); width: 90%; max-width: 600px; }
-        .numpad { grid-template-columns: repeat(3, 1fr); width: 70%; max-width: 300px; }
-        .custom-grid { grid-template-columns: repeat(2, 1fr); width: 95%; max-width: 700px; }
-        button { padding: 15px; font-size: 16px; border: none; background: #0078d4; color: white; border-radius: 6px; cursor: pointer; }
-        button:hover { background: #005fa3; }
-        #unlockSection, #smartAgentSection, #dashboard-content { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.15); width: 90%; max-width: 900px; margin: 20px auto; }
-        #unlockSection { max-width: 400px; margin-top: 80px; }
-        #dashboard-content { margin-top: 40px;}
-        #passwordInput { width:80%; padding:12px; border-radius:6px; border:1px solid #ccc; font-size:16px; }
-        #status { display: inline-block; margin-top: 10px; padding: 6px 10px; border-radius: 999px; font-size: 13px; background: #eee; color: #333; }
-        .agent-download-buttons button {margin-bottom: .8em; margin-right: .4em;}
-        .msg-success {color:#218a41; font-weight:600; margin:1em 0;}
-        .msg-fail {color:#c31; font-weight:bold; margin:1em 0;}
+        body { font-family: Arial, sans-serif; background: #f6f8fa; color: #222; margin:0; padding:0; }
+        #container { max-width: 570px; margin: 30px auto 60px auto; background: #fff; box-shadow:0 3px 24px #0003; border-radius: 10px; padding:36px 28px 30px 28px;}
+        h1 { text-align: center; margin-bottom: 20px;}
+        .section { margin: 32px 0 0 0;}
+        input[type="password"] { font-size: 17px; padding: 12px; width: 70%; border-radius: 7px; border: 1px solid #ccc;}
+        label { font-size: 95%; }
+        button { background: #0078d4; color: #fff; border:none; border-radius: 7px; padding: 14px 24px; font-size: 17px; font-weight: bold; cursor: pointer; margin:11px 0;}
+        button:active, button:focus, button:hover { background:#005fa3; }
+        .hidden { display:none; }
+        .msg-fail { color: #c31; font-weight: bold; margin-top: 10px;}
+        .payload-buttons button { margin-bottom:.8em; margin-right: .7em;}
+        .download-box { background: #f3f8ff; border:1px solid #aaafd4; border-radius:8px; padding:18px 20px 12px 18px; margin:16px 0;font-size:1.06em;}
+        .download-box strong { color: #072380; }
+        #status { display:block; margin-bottom: 13px; font-size:1em; background:#e5e5ee; border-radius:999px; padding:7px 16px;color:#223;}
+        @media (max-width:600px){
+            #container { padding:8vw 3vw 5vw 3vw; }
+            h1 { font-size:1.43em;}
+            button { padding:13px 10px; font-size:1em;}
+        }
     </style>
 </head>
 <body>
-  <!-- Password Unlock -->
+<div id="container">
+  <h1>CMR MiniDash Web</h1>
+  <!-- 1. Password Unlock -->
   <div id="unlockSection">
-    <h2>Enter Your Password</h2>
-    <input type="password" id="passwordInput" autocomplete="current-password" />
-    <label style="font-size:90%;margin-left:10px;">
-      <input type="checkbox" id="showPassword" /> Show password
-    </label>
-    <br><br>
+    <h2>Enter Password</h2>
+    <input type="password" id="passwordInput" autocomplete="current-password" />&nbsp;
+    <label><input type="checkbox" id="showPassword" /> Show</label>
+    <br>
     <button id="unlockButton">Unlock</button>
+    <div id="unlockMsg" class="msg-fail hidden"></div>
   </div>
 
-  <!-- Smart Agent Install/Verification -->
-  <div id="smartAgentSection" class="hidden">
-    <h2>Smart Agent Installation Required</h2>
-    <ol style="font-size:1.09em;text-align:left;max-width:420px;margin:20px auto 20px auto;">
-        <li>Download these three files (<b>.txt</b>):
-          <div class="agent-download-buttons">
-            <a
-  href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Structure.txt"
-  download="Structure.txt"
-  style="text-decoration:none;"
->
-  <button type="button">Structure.txt</button>
-</a>
-            <a
-  href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/Listener.txt"
-  download="Listener.txt"
-  style="text-decoration:none;"
->
-  <button type="button">Listener.txt</button>
-</a>
-           <a
-  href="https://github.com/JHRAd317/CMRWEBMD/raw/main/userfiles/activate.txt"
-  download="activate.txt"
-  style="text-decoration:none;"
->
-  <button type="button">activate.txt</button>
-</a>
-          </div>
+  <!-- 2. Agent Install Instructions (Clipboard Bridge Only) -->
+  <div id="agentInstallSection" class="hidden section">
+    <h2>Install Smart Agent (Local Automation Engine)</h2>
+    <div class="download-box">
+      <ol>
+        <li>Download <strong>activate.txt</strong><br>
+          <a href="https://github.com/JHRAd317/CMRWEBMD/raw/main/CMRWEBMD/activate.txt" download="activate.txt">
+            <button type="button">Download activate.txt</button>
+          </a>
         </li>
-        <li>Rename <b>activate.txt</b> to <b>activate.ps1</b>.</li>
-        <li>Right-click <b>activate.ps1</b> and select <b>Run with PowerShell</b>.</li>
-        <li>Click <b>Verify Smart Agent</b> below.<br>
-            (If successful, your dashboard unlocks!)
+        <li>Rename file to <strong>activate.ps1</strong>.</li>
+        <li>Right-click, select <b>“Run with PowerShell”</b>.</li>
+        <li>Keep MiniDash agent <b>open</b> during all automation.<br>
+          The agent stays minimized while you work from this web interface!
         </li>
-    </ol>
-    <button class="verify-btn" id="verifyAgentButton" style="background:#31bb5f;font-size:1em;padding:0.6em 1.6em;margin-bottom:.5em;border-radius:5px;border:1px solid #7773;color:#fff;">
-      Verify Smart Agent
-    </button>
-    <div id="agent-success" class="msg-success hidden">
-      ✔ The Smart Agent is running! Dashboard will unlock below.
+      </ol>
+      No admin needed.<br>
+      <span style="font-size:95%">
+        <b>Note:</b> Some browsers put the file in your Downloads folder.<br>
+        You can right-click and Save-As if needed.
+      </span>
     </div>
-    <div id="agent-fail" class="msg-fail hidden">
-      Smart Agent could not be reached at <code>http://localhost:5123/</code>.
-      <br>
-      Please ensure you've run <b>activate.ps1</b> and try again.
-    </div>
+    <button id="continueButton" style="margin-top:20px;">Continue to Dashboard</button>
   </div>
 
-  <!-- Your main dashboard -->
-  <div id="dashboard-content" class="hidden">
-    <h1>CMR MiniDash Web</h1>
-    <div id="status" aria-live="polite">Ready</div>
-    <!-- Existing dashboard content goes below (from your previous index) -->
-    <!-- ... Copy your dashboard/tools here ... -->
+  <!-- 3. Dashboard (Web GUI front-end) -->
+  <div id="dashboardSection" class="hidden section">
+    <span id="status" aria-live="polite">Ready</span>
+    <h2>Automation Actions</h2>
+    <div class="payload-buttons">
+      <button onclick="sendPayload('{TAB}{TAB}{SLEEP 300}Hello World')">Run: Double Tab + Type "Hello World"</button>
+      <button onclick="sendPayload('{F2}{SLEEP 250}New Value{ENTER}')">Rename Field: F2 then "New Value", Enter</button>
+      <button onclick="sendPayload('^c{SLEEP 150}{TAB}{TAB}{SLEEP 100}^v{ENTER}')">Copy, 2×Tab, Paste, Enter</button>
+      <button onclick="sendPayload('Custom sequence 123{ENTER}')">Send Custom Message + Enter</button>
+      <!-- Add more actions as needed -->
+    </div>
+    <div style="margin:1.8em 0 0 0;font-size:1.1em;color:#3F3333;">
+      When you click an action button, the payload is copied to your clipboard.<br>
+      <b>Switch to MiniDash and click "Run Clipboard Payload" to execute.</b>
+    </div>
   </div>
+</div>
 
 <script>
+/* Password unlock logic */
+const PASSWORD = "CMR2026!";
+
 document.getElementById('showPassword').addEventListener('change', function() {
-    const pwInput = document.getElementById('passwordInput');
-    pwInput.type = this.checked ? 'text' : 'password';
-});
-document.getElementById('unlockButton').addEventListener('click', function() {
-    var password = document.getElementById('passwordInput').value;
-    if (password === 'CMR2026!') {
-        document.getElementById('smartAgentSection').classList.remove('hidden');
-        document.getElementById('unlockSection').classList.add('hidden');
-    } else {
-        alert('Invalid password!');
-    }
+  document.getElementById('passwordInput').type = this.checked ? 'text' : 'password';
 });
 
-// --- Fixed downloadScript (anchor based: no fetch/CORS, works for GitHub) ---
-function downloadScript(source, targetName) {
-    const link = document.createElement("a");
-    link.href = source;
-    link.download = targetName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+document.getElementById('unlockButton').onclick = function() {
+  const pw = document.getElementById('passwordInput').value;
+  if (pw === PASSWORD) {
+    document.getElementById('unlockSection').classList.add('hidden');
+    document.getElementById('agentInstallSection').classList.remove('hidden');
+    document.getElementById('unlockMsg').classList.add('hidden');
+  } else {
+    document.getElementById('unlockMsg').classList.remove('hidden');
+    document.getElementById('unlockMsg').innerText = "Invalid password!";
+  }
+};
+
+/* Continue directly to Dashboard (no verify step needed!) */
+document.getElementById('continueButton').onclick = function() {
+  document.getElementById('agentInstallSection').classList.add('hidden');
+  document.getElementById('dashboardSection').classList.remove('hidden');
+};
+
+/* Clipboard bridge: Copy payload, alert user to switch to MiniDash */
+async function sendPayload(payload) {
+  try {
+    await navigator.clipboard.writeText(payload);
+    alert("Payload copied! Now switch to your Smart Agent (MiniDash) and click 'Run Clipboard Payload' to execute.");
+  } catch (e) {
+    alert("Clipboard failed! Your browser or OS may block clipboard access.");
+  }
 }
-
-document.getElementById('verifyAgentButton').addEventListener('click', async function() {
-    document.getElementById('verifyAgentButton').innerText = "Verifying...";
-    document.getElementById('agent-fail').classList.add('hidden');
-    document.getElementById('agent-success').classList.add('hidden');
-    let ok = false;
-    try {
-        const res = await fetch('http://localhost:5123/', { method: 'GET', cache: 'no-store' });
-        if(res.ok){
-            let txt = await res.text();
-            if(txt && txt.match(/alive/i)) ok = true;
-        }
-    } catch(e){}
-    document.getElementById('verifyAgentButton').innerText = "Verify Smart Agent";
-    if(ok) {
-        document.getElementById('agent-success').classList.remove('hidden');
-        document.getElementById('agent-fail').classList.add('hidden');
-        setTimeout(() => {
-            document.getElementById('dashboard-content').classList.remove('hidden');
-            document.getElementById('smartAgentSection').classList.add('hidden');
-        }, 900);
-    } else {
-        document.getElementById('agent-success').classList.add('hidden');
-        document.getElementById('agent-fail').classList.remove('hidden');
-    }
-});
 </script>
 </body>
 </html>

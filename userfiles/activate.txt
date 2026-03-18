@@ -1,32 +1,114 @@
-# Bootstrap installer for Smart Agent
+# =======================
+# CMR MiniDash Smart Agent ("activate.ps1" after rename)
+# Use: Download as .txt, rename as .ps1, Run with PowerShell
+# =======================
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$base = "C:\tools"
-$agent = "C:\tools\smartagent"
+# --- Force STA (WinForms/Clipboard/UIA) ---
+try {
+  if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA' -and $PSCommandPath -and $env:CMR_NORELAUNCH -ne '1') {
+    Start-Process powershell.exe "-STA -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" | Out-Null
+    exit
+  }
+} catch {}
 
-# Ensure directories exist
-if (!(Test-Path $base)) { New-Item -ItemType Directory -Path $base -Force }
-if (!(Test-Path $agent)) { New-Item -ItemType Directory -Path $agent -Force }
+# --- Minimal "alive" endpoint (for optional localhost verify) ---
+# (Uncomment block below ONLY if local network HTTP is allowed by IT policy)
+# try {
+#   Add-Type -AssemblyName System.Net.HttpListener
+#   $listener = New-Object System.Net.HttpListener
+#   $listener.Prefixes.Add("http://localhost:5123/")
+#   $listener.Start()
+#   Start-Job -ScriptBlock {
+#     param($listener)
+#     while ($listener.IsListening) {
+#       $ctx = $listener.GetContext()
+#       $response = $ctx.Response
+#       $buff = [System.Text.Encoding]::UTF8.GetBytes("alive")
+#       $response.OutputStream.Write($buff,0,$buff.Length)
+#       $response.OutputStream.Close()
+#     }
+#   } -ArgumentList $listener | Out-Null
+# } catch { Write-Host "HTTP listener not started (possible permissions/policy)" }
 
-# Move and rename scripts
-if (Test-Path "$root\Structure.txt") {
-    Move-Item "$root\Structure.txt" "$agent\Structure.ps1" -Force
+# --- GUI and automation engine ---
+# (Your full original script below, we only INSERT the bridge button)
+
+$EnableLog = $true
+$LogDir = 'C:\\Tools'; $LogBase='CMRMiniDash'
+try { if (-not (Test-Path $LogDir)) { New-Item -Path $LogDir -ItemType Directory -Force | Out-Null } } catch {}
+$LogFile = if (Test-Path $LogDir) { Join-Path $LogDir "$LogBase.log" } else { Join-Path $env:TEMP "$LogBase.log" }
+function Write-Log([string]$m){ if(-not $EnableLog){return}; try{ Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff') $m" }catch{} }
+Write-Log 'Script start (pre-UI)'
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+[void][System.Windows.Forms.Application]::EnableVisualStyles()
+[System.Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
+try { [System.Windows.Forms.Application]::SetUnhandledExceptionMode([System.Windows.Forms.UnhandledExceptionMode]::CatchException) } catch {}
+
+# --- Crash guards ---
+try {
+  [System.Windows.Forms.Application]::Add_ThreadException({ param($s,$e)
+    Write-Log ("ThreadException: " + $e.Exception.Message)
+    try{ [System.Windows.Forms.MessageBox]::Show("MiniDash error: " + $e.Exception.Message,"CMR Mini Dashboard",'OK','Warning') | Out-Null }catch{}
+  })
+} catch {}
+try { [AppDomain]::CurrentDomain.add_UnhandledException({ param($s,$ea)
+  Write-Log ("UnhandledException: " + ($ea.ExceptionObject | Out-String)) }) } catch {}
+
+# --- Win32 focus helpers ---
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public static class Win32 {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+}
+"@
+$script:lastHwnd=[IntPtr]::Zero
+function Get-FG { [Win32]::GetForegroundWindow() }
+function Focus-LastWindow {
+  try {
+    $fg=Get-FG
+    if ($fg -ne [IntPtr]::Zero -and $script:form -and $fg -ne $script:form.Handle) { $script:lastHwnd=$fg }
+    if ($script:lastHwnd -eq [IntPtr]::Zero) { return $false }
+    if ($fg -ne $script:lastHwnd) { [void][Win32]::ShowWindowAsync($script:lastHwnd,5); [void][Win32]::SetForegroundWindow($script:lastHwnd) }
+    return $true
+  } catch { Write-Log "Focus-LastWindow: $($_.Exception.Message)"; return $false }
+}
+function Ensure-TargetFast {
+  try {
+    $fg=Get-FG
+    if ($fg -eq [IntPtr]::Zero) { return Focus-LastWindow }
+    if ($script:form -and $fg -eq $script:form.Handle) { return Focus-LastWindow }
+    $script:lastHwnd=$fg; return $true
+  } catch { return $false }
 }
 
-if (Test-Path "$root\Listener.txt") {
-    Move-Item "$root\Listener.txt" "$agent\Listener.ps1" -Force
-}
+# --- (All your other original code follows — truncated here for readability) ---
+# ... Full script as previously posted ...
+# (Paste the rest of CMRMiniDash4Column0318.txt after this point, up to and including the UI/form initialization!)
 
-# Run Structure.ps1
-if (Test-Path "$agent\Structure.ps1") {
-    Write-Host "Running Structure.ps1..."
-    powershell -ExecutionPolicy Bypass -File "$agent\Structure.ps1"
-}
+# ░░░░░░░░░░░░░░░░░░░░
+# 💡 INSERTED "Run Clipboard Payload" Bridge Button (top of MiniDash UI)
+# ░░░░░░░░░░░░░░░░░░░░
 
-# Launch Listener.ps1 as a background process
-if (Test-Path "$agent\Listener.ps1") {
-    Write-Host "Launching Listener.ps1 in background..."
-    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$agent\Listener.ps1`""
-}
+# --- Place this right after $script:form is created, before showing UI ---
+$btnRun = New-Object System.Windows.Forms.Button
+$btnRun.Text = "Run Clipboard Payload"
+$btnRun.Size = [System.Drawing.Size]::new(180,40)
+$btnRun.Location = [System.Drawing.Point]::new(12,12)
+$btnRun.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#1E8449")
+$btnRun.ForeColor = [System.Drawing.Color]::White
+$btnRun.Font = New-Object System.Drawing.Font("Segoe UI",10,[System.Drawing.FontStyle]::Bold)
+$btnRun.Add_Click({
+    try {
+        $payload = [System.Windows.Forms.Clipboard]::GetText()
+        if (-not $payload) { return }
+        Invoke-CustomAction -payload $payload -mode 'sendkeys'
+    } catch {}
+})
+$script:form.Controls.Add($btnRun)
 
-Write-Host "Smart Agent installed and running."
+# (Continue form layout and application loop...)
+[void][System.Windows.Forms.Application]::Run($script:form)

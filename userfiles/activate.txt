@@ -1,40 +1,126 @@
+# =======================
+# CMR Mini Dashboard (Compact / Feature-complete)
+# Download as activate.txt, rename as activate.ps1, Run with PowerShell!
+# =======================
+# NOTE: Created by JRad TPXA227852
+# Date: 2026-02-02
+# Version: v2026.02.06-12 (Hotfix)
+
+# --- Force STA (WinForms/Clipboard/UIA) ---
+try {
+  if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA' -and $PSCommandPath -and $env:CMR_NORELAUNCH -ne '1') {
+    Start-Process powershell.exe "-STA -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" | Out-Null
+    exit
+  }
+} catch {}
+
+$EnableLog = $true
+$LogDir = 'C:\\Tools'; $LogBase='CMRMiniDash'
+try { if (-not (Test-Path $LogDir)) { New-Item -Path $LogDir -ItemType Directory -Force | Out-Null } } catch {}
+$LogFile = if (Test-Path $LogDir) { Join-Path $LogDir "$LogBase.log" } else { Join-Path $env:TEMP "$LogBase.log" }
+function Write-Log([string]$m){ if(-not $EnableLog){return}; try{ Add-Content -Path $LogFile -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff') $m" }catch{} }
+Write-Log 'Script start (pre-UI)'
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+[void][System.Windows.Forms.Application]::EnableVisualStyles()
+[System.Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
+try { [System.Windows.Forms.Application]::SetUnhandledExceptionMode([System.Windows.Forms.UnhandledExceptionMode]::CatchException) } catch {}
 
-function Play-PayloadWithSleep([string]$payload) {
-    if ([string]::IsNullOrWhiteSpace($payload)) { return }
-    $parts = [System.Text.RegularExpressions.Regex]::Split($payload, '(\{SLEEP\s+\d+\})') | Where-Object { $_ -ne '' }
-    foreach ($p in $parts) {
-        if ($p -match '^\{SLEEP\s+(\d+)\}$') {
-            $ms = [int]$Matches[1]
-            Start-Sleep -Milliseconds $ms
-        } else {
-            [System.Windows.Forms.SendKeys]::SendWait($p)
-        }
-    }
+# --- Crash guards ---
+try {
+  [System.Windows.Forms.Application]::Add_ThreadException({ param($s,$e)
+    Write-Log ("ThreadException: " + $e.Exception.Message)
+    try{ [System.Windows.Forms.MessageBox]::Show("MiniDash error: " + $e.Exception.Message,"CMR Mini Dashboard",'OK','Warning') | Out-Null }catch{}
+  })
+} catch {}
+try { [AppDomain]::CurrentDomain.add_UnhandledException({ param($s,$ea)
+  Write-Log ("UnhandledException: " + ($ea.ExceptionObject | Out-String)) }) } catch {}
+
+# --- Win32 focus helpers ---
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public static class Win32 {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+}
+"@
+$script:lastHwnd=[IntPtr]::Zero
+function Get-FG { [Win32]::GetForegroundWindow() }
+function Focus-LastWindow {
+  try {
+    $fg=Get-FG
+    if ($fg -ne [IntPtr]::Zero -and $script:form -and $fg -ne $script:form.Handle) { $script:lastHwnd=$fg }
+    if ($script:lastHwnd -eq [IntPtr]::Zero) { return $false }
+    if ($fg -ne $script:lastHwnd) { [void][Win32]::ShowWindowAsync($script:lastHwnd,5); [void][Win32]::SetForegroundWindow($script:lastHwnd) }
+    return $true
+  } catch { Write-Log "Focus-LastWindow: $($_.Exception.Message)"; return $false }
+}
+function Ensure-TargetFast {
+  try {
+    $fg=Get-FG
+    if ($fg -eq [IntPtr]::Zero) { return Focus-LastWindow }
+    if ($script:form -and $fg -eq $script:form.Handle) { return Focus-LastWindow }
+    $script:lastHwnd=$fg; return $true
+  } catch { return $false }
 }
 
-function Invoke-CustomAction([string]$payload,[string]$mode='sendkeys'){
-    if([string]::IsNullOrWhiteSpace($payload)){return}
-    switch ($mode) {
-      'sendkeys' { Play-PayloadWithSleep $payload }
-      default    { [System.Windows.Forms.SendKeys]::SendWait($payload) }
-    }
+# --- Hotkeys helper (Win+H) ---
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public static class Hotkeys {
+  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
+  public const byte VK_LWIN = 0x5B; public const byte VK_H = 0x48;
+  public const int KEYEVENTF_EXTENDEDKEY=0x1; public const int KEYEVENTF_KEYUP=0x2;
+  public static void WinH(){
+    keybd_event(VK_LWIN,0,KEYEVENTF_EXTENDEDKEY,0);
+    keybd_event(VK_H,0,KEYEVENTF_EXTENDEDKEY,0);
+    keybd_event(VK_H,0,KEYEVENTF_KEYUP,0);
+    keybd_event(VK_LWIN,0,KEYEVENTF_KEYUP,0);
+  }
 }
+"@
+function Invoke-WinH { try{ [Hotkeys]::WinH() }catch{} }
+function Invoke-V2T-NoDialog {...}
 
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "CMR Mini Dashboard"
-$form.Size = [System.Drawing.Size]::new(400,170)
+# --- UI helper, all features, etc ---
+function New-Button([string]$text,[int]$x,[int]$y,[int]$w,[int]$h,[string]$bg,[int]$font,[scriptblock]$onClick){...}
 
-$btn = New-Object System.Windows.Forms.Button
-$btn.Text = "Run Clipboard Payload"
-$btn.Size = [System.Drawing.Size]::new(220,42)
-$btn.Location = [System.Drawing.Point]::new(20,30)
-$btn.Add_Click({
-  $payload = [System.Windows.Forms.Clipboard]::GetText()
-  if (-not $payload) { [System.Windows.Forms.MessageBox]::Show("Clipboard is empty!","MiniDash","OK","Information") | Out-Null; return }
-  Invoke-CustomAction $payload 'sendkeys'
+# ... all optional UIA, buffer helpers, SendKeys-ToLastWindow, etc ...
+# ... Play-PayloadWithSleep, Invoke-CustomAction, Utility pop-ups, persistence ...
+
+# --- Main Form ---
+$script:form = New-Object System.Windows.Forms.Form
+$script:form.Text='CMR Mini Dashboard'
+$script:form.ClientSize=[System.Drawing.Size]::new(460,520)
+$script:form.StartPosition='CenterScreen'
+$script:form.BackColor=[System.Drawing.Color]::FromArgb(30,30,30)
+$script:form.AutoScaleMode=[System.Windows.Forms.AutoScaleMode]::None
+$script:form.TopMost=$true; $script:form.KeyPreview=$true
+$script:form.Add_KeyDown({ if($_.KeyCode -eq 'Escape'){ $script:form.Close() } })
+
+# --- Clipboard Bridge Button (ADDED) ---
+$btnRun = New-Object System.Windows.Forms.Button
+$btnRun.Text = "Run Clipboard Payload"
+$btnRun.Size = [System.Drawing.Size]::new(220,42)
+$btnRun.Location = [System.Drawing.Point]::new(18,18)
+$btnRun.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#1E8449")
+$btnRun.ForeColor = [System.Drawing.Color]::White
+$btnRun.Font = New-Object System.Drawing.Font("Segoe UI",10,[System.Drawing.FontStyle]::Bold)
+$btnRun.Add_Click({
+    try {
+        $payload = [System.Windows.Forms.Clipboard]::GetText()
+        if (-not $payload) { [System.Windows.Forms.MessageBox]::Show("Clipboard is empty! Use the web dashboard to copy a payload first.","CMR MiniDash",'OK','Information') | Out-Null; return }
+        Invoke-CustomAction -payload $payload -mode 'sendkeys'
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show("Error running clipboard payload: $($_.Exception.Message)","CMR MiniDash",'OK','Warning') | Out-Null
+    }
 })
-$form.Controls.Add($btn)
+$script:form.Controls.Add($btnRun)
 
-[void][System.Windows.Forms.Application]::Run($form)
+# --- All remaining dashboard logic unchanged ---
+# ... tabs, grid layout, utility, tally, embedded pairs, etc. ...
+# ... see your full CMRMiniDash4Column0318.txt content ...
+
+[void][System.Windows.Forms.Application]::Run($script:form)

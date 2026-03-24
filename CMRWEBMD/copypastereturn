@@ -1,0 +1,28 @@
+$Test1.Add_Click({
+    # 1) Select all in the current field
+    [System.Windows.Forms.SendKeys]::SendWait("^a")
+    SleepMS 120
+
+    # 2) Copy
+    [System.Windows.Forms.SendKeys]::SendWait("^c")
+    SleepMS 150
+
+    # 3) Move to destination field/cell
+    [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
+    SleepMS 120
+
+    # 4) Paste
+    [System.Windows.Forms.SendKeys]::SendWait("^v")
+    SleepMS 150
+
+    # 5) Return to original field
+    [System.Windows.Forms.SendKeys]::SendWait("+{TAB}")
+    SleepMS 120
+
+    # 6) Deselect text (cursor moves right)
+    [System.Windows.Forms.SendKeys]::SendWait("{RIGHT}")
+    SleepMS 80
+
+    # 7) Advance to next field
+    [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
+})
